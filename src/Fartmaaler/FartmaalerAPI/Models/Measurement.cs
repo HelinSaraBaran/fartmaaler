@@ -1,17 +1,16 @@
-namespace FartmaalerAPI.Models;
-
-public class Measurement
+namespace FartmaalerAPI.Models
 {
-    public int Id { get; set; }
-    public int SessionId { get; set; }
-    
-    public double Distance { get; set; }
-    public double Speed { get; set; }
-    public double Time { get; set; }
-    
-    public string RoadType  { get; set; }
-    public string CarType  { get; set; }
-    
-    public double Co2 { get; set; }
-    public DateTime Date { get; set; }
+    public class Measurement
+    {
+        public int Id { get; set; }
+        public int SessionId { get; set; }
+        public Session Session { get; set; }
+        public double MeasuredSpeed { get; set; }
+        public double SimulatedSpeed { get; set; }
+        public double Time { get; set; }
+        public double Distance { get; set; }
+        public double Co2 { get; set; }
+        public double Co2Saved { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
 }
