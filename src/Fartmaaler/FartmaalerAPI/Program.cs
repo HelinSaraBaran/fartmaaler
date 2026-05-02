@@ -33,6 +33,23 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Seed admin bruger
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    if (!context.Users.Any())
+    {
+        context.Users.Add(new FartmaalerAPI.Models.User
+        {
+            Username = "admin",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            Role = "admin"
+        });
+        context.SaveChanges();
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
