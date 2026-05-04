@@ -4,7 +4,7 @@ using FartmaalerAPI;
 
 namespace TestProject1
 {
-    public class UnitTest1
+    public class UserRepoTests
 
     // TESTS FOR GROUPSREPO
     {
