@@ -2,7 +2,7 @@
 
 namespace FartmaalerAPI.Repositories
 {
-    public class SessionsRepo
+    public class SessionsRepo : IRepository<Session>
     {
         private List<Session> m_sessions = new List<Session>();
         private static int nextID = 1;
