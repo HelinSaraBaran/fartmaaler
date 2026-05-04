@@ -2,7 +2,7 @@
 
 namespace FartmaalerAPI.Repositories
 {
-    public class GroupsRepo
+    public class GroupsRepo //: IRepository
     {
         private List<Group> m_groups = new List<Group>();
         private static int nextId = 1;
