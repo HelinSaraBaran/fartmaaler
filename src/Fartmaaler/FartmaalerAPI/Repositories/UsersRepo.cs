@@ -2,7 +2,7 @@
 
 namespace FartmaalerAPI.Repositories
 {
-    public class UsersRepo //: IRepository
+    public class UsersRepo : IRepository<User>
     {
         private List<User> m_users = new List<User>();
         private static int nextId = 1;

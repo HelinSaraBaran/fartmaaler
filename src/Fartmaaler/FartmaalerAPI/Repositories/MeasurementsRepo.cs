@@ -2,7 +2,7 @@
 
 namespace FartmaalerAPI.Repositories
 {
-    public class MeasurementsRepo
+    public class MeasurementsRepo : IRepository<Measurement>
     {
         private List<Measurement> m_measurements = new List<Measurement>();
         private static int nextId = 1;
