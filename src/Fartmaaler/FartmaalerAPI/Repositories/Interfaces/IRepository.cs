@@ -1,4 +1,4 @@
-﻿namespace FartmaalerAPI.Repositories
+﻿namespace FartmaalerAPI.Repositories.Interfaces
 {
     public interface IRepository<T>
     {
