@@ -1,128 +1,62 @@
-﻿using FartmaalerAPI.Models;
+﻿using FartmaalerAPI.Data;
+using FartmaalerAPI.Models;
+using FartmaalerAPI.Repositories.Interfaces;
 
 namespace FartmaalerAPI.Repositories
 {
     public class SessionsRepo : IRepository<Session>
     {
-        private List<Session> m_sessions = new List<Session>();
-        private static int nextID = 1;
+        private readonly AppDbContext _context;
+
+        public SessionsRepo(AppDbContext context)
+        {
+            _context = context;
+        }
 
         public IEnumerable<Session> GetAll()
         {
-            List<Session> sessions = new List<Session>(m_sessions);
-            return sessions;
+            return _context.Sessions.ToList();
         }
 
         public Session? GetById(int id)
         {
-            Session? session = m_sessions.FirstOrDefault(s => s.Id == id);
-
-            if (session == null)
-            {
-                return null;
-            }
-
-            Session sessionCopy = new Session
-            {
-                Id = session.Id,
-                GroupId = session.GroupId,
-                Group = session.Group,
-                CarType = session.CarType,
-                RoadType = session.RoadType,
-                SpeedLimit = session.SpeedLimit,
-                ScalingFactor = session.ScalingFactor,
-                Status = session.Status,
-                CreatedAt = session.CreatedAt,
-                EndedAt = session.EndedAt
-            };
-
-            return sessionCopy;
+            return _context.Sessions.Find(id);
         }
 
         public Session Add(Session session)
         {
-            session.Id = nextID++;
-            m_sessions.Add(session);
-
-            Session sessionCopy = new Session
-            {
-                Id = session.Id,
-                GroupId = session.GroupId,
-                Group = session.Group,
-                CarType = session.CarType,
-                RoadType = session.RoadType,
-                SpeedLimit = session.SpeedLimit,
-                ScalingFactor = session.ScalingFactor,
-                Status = session.Status,
-                CreatedAt = session.CreatedAt,
-                EndedAt = session.EndedAt
-            };
-
-            return sessionCopy;
+            _context.Sessions.Add(session);
+            _context.SaveChanges();
+            return session;
         }
 
         public Session? Delete(int id)
         {
-            Session? session = m_sessions.FirstOrDefault(s => s.Id == id);
-
+            var session = _context.Sessions.Find(id);
             if (session == null)
-            {
                 return null;
-            }
 
-            m_sessions.Remove(session);
-
-            Session sessionCopy = new Session
-            {
-                Id = session.Id,
-                GroupId = session.GroupId,
-                Group = session.Group,
-                CarType = session.CarType,
-                RoadType = session.RoadType,
-                SpeedLimit = session.SpeedLimit,
-                ScalingFactor = session.ScalingFactor,
-                Status = session.Status,
-                CreatedAt = session.CreatedAt,
-                EndedAt = session.EndedAt
-            };
-
-            return sessionCopy;
+            _context.Sessions.Remove(session);
+            _context.SaveChanges();
+            return session;
         }
 
         public Session? Update(int id, Session updatedSession)
         {
-            Session? existingSession = m_sessions.FirstOrDefault(s => s.Id == id);
-
-            if (existingSession == null)
-            {
+            var existing = _context.Sessions.Find(id);
+            if (existing == null)
                 return null;
-            }
 
-            existingSession.GroupId = updatedSession.GroupId;
-            existingSession.Group = updatedSession.Group;
-            existingSession.CarType = updatedSession.CarType;
-            existingSession.RoadType = updatedSession.RoadType;
-            existingSession.SpeedLimit = updatedSession.SpeedLimit;
-            existingSession.ScalingFactor = updatedSession.ScalingFactor;
-            existingSession.Status = updatedSession.Status;
-            existingSession.CreatedAt = updatedSession.CreatedAt;
-            existingSession.EndedAt = updatedSession.EndedAt;
+            existing.GroupId = updatedSession.GroupId;
+            existing.CarType = updatedSession.CarType;
+            existing.RoadType = updatedSession.RoadType;
+            existing.SpeedLimit = updatedSession.SpeedLimit;
+            existing.ScalingFactor = updatedSession.ScalingFactor;
+            existing.Status = updatedSession.Status;
+            existing.EndedAt = updatedSession.EndedAt;
 
-            Session sessionCopy = new Session
-            {
-                Id = existingSession.Id,
-                GroupId = existingSession.GroupId,
-                Group = existingSession.Group,
-                CarType = existingSession.CarType,
-                RoadType = existingSession.RoadType,
-                SpeedLimit = existingSession.SpeedLimit,
-                ScalingFactor = existingSession.ScalingFactor,
-                Status = existingSession.Status,
-                CreatedAt = existingSession.CreatedAt,
-                EndedAt = existingSession.EndedAt
-            };
-
-            return sessionCopy;
+            _context.SaveChanges();
+            return existing;
         }
     }
 }
