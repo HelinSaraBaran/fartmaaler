@@ -4,49 +4,72 @@ using FartmaalerAPI.Repositories.Interfaces;
 
 namespace FartmaalerAPI.Repositories
 {
+    // Dette repository håndterer data for Session
+    // En session er et samlet forsøg i fartmåleren
     public class SessionsRepo : IRepository<Session>
     {
+        // Database context til kommunikation med databasen
         private readonly AppDbContext _context;
 
+        // Constructor modtager context via dependency injection
         public SessionsRepo(AppDbContext context)
         {
             _context = context;
         }
 
+        // Henter alle sessions fra databasen
         public IEnumerable<Session> GetAll()
         {
             return _context.Sessions.ToList();
         }
 
+        // Finder en session ud fra id
         public Session? GetById(int id)
         {
             return _context.Sessions.Find(id);
         }
 
+        // Tilføjer en ny session til databasen
         public Session Add(Session session)
         {
             _context.Sessions.Add(session);
+
+            // Gemmer sessionen i databasen
             _context.SaveChanges();
+
             return session;
         }
 
+        // Sletter en session ud fra id
         public Session? Delete(int id)
         {
+            // Finder sessionen først
             var session = _context.Sessions.Find(id);
+
+            // Hvis den ikke findes, returneres null
             if (session == null)
                 return null;
 
+            // Fjerner sessionen fra databasen
             _context.Sessions.Remove(session);
+
+            // Gemmer ændringen
             _context.SaveChanges();
+
             return session;
         }
 
+        // Opdaterer en eksisterende session
         public Session? Update(int id, Session updatedSession)
         {
+            // Finder den eksisterende session
             var existing = _context.Sessions.Find(id);
+
+            // Hvis den ikke findes, returneres null
             if (existing == null)
                 return null;
 
+            // Opdaterer alle relevante felter
             existing.GroupId = updatedSession.GroupId;
             existing.CarType = updatedSession.CarType;
             existing.RoadType = updatedSession.RoadType;
@@ -55,7 +78,9 @@ namespace FartmaalerAPI.Repositories
             existing.Status = updatedSession.Status;
             existing.EndedAt = updatedSession.EndedAt;
 
+            // Gemmer ændringerne i databasen
             _context.SaveChanges();
+
             return existing;
         }
     }
