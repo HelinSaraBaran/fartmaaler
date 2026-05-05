@@ -43,15 +43,28 @@ namespace FartmaalerAPI.Controllers
             if (measurement.SessionId <= 0)
                 return BadRequest(new { message = "SessionId er påkrævet" }); // 400
 
+            var session = _context.Sessions.FirstOrDefault(s => s.Id == measurement.SessionId);
+          
+            if (session == null)
+                return NotFound(new
+                {
+                    message = "session blev ikke fundet"
+                });
+            if (session.Status == "Ended")
+                return BadRequest(new
+                {
+                    message = "der kan ikke tilføjes målinger til en afsluttet session"
+                });
             measurement.CreatedAt = DateTime.Now;
 
             var created = _repo.Add(measurement);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = created.Id },
-                created
-            ); // 201
+            return CreatedAtAction(nameof(GetById), new
+            {
+                id = created.Id
+            },
+            created
+            );
         }
 
         [HttpDelete("{id}")]
@@ -135,6 +148,55 @@ namespace FartmaalerAPI.Controllers
                 return NotFound(new { message = "Ingen data til leaderboard" }); // 404
 
             return Ok(result); // 200
+        }
+
+        [HttpGet("session/{sessionId}")]
+        public IActionResult GetMeasurementsBySession(int sessionId)
+        {
+            var session = _context.Sessions.FirstOrDefault(s => s.Id == sessionId);
+            if (session == null)
+
+                return NotFound(new { message = "session blev ikke fundet" });
+
+            var meassurements = _context.Measurements.Where(m => m.SessionId == sessionId).OrderByDescending(m => m.CreatedAt).ToList();
+            return Ok(meassurements);
+
+        }
+
+        [HttpGet("session/{sessionId}/summary")]
+        public IActionResult GetSessionSummary(int sessionId)
+        {
+            var session = _context.Sessions.FirstOrDefault(s => s.Id == sessionId);
+
+            if (session == null)
+                return NotFound(new { message = "Session blev ikke fundet" });
+
+            var measurements = _context.Measurements
+                .Where(m => m.SessionId == sessionId)
+                .ToList();
+
+            if (!measurements.Any())
+                return Ok(new
+                {
+                    SessionId = sessionId,
+                    Count = 0,
+                    AverageMeasuredSpeed = 0,
+                    AverageSimulatedSpeed = 0,
+                    AverageCo2 = 0,
+                    TotalCo2Saved = 0
+                });
+
+            var result = new
+            {
+                SessionId = sessionId,
+                Count = measurements.Count,
+                AverageMeasuredSpeed = measurements.Average(m => m.MeasuredSpeed),
+                AverageSimulatedSpeed = measurements.Average(m => m.SimulatedSpeed),
+                AverageCo2 = measurements.Average(m => m.Co2),
+                TotalCo2Saved = measurements.Sum(m => m.Co2Saved)
+            };
+
+            return Ok(result);
         }
     }
 }
