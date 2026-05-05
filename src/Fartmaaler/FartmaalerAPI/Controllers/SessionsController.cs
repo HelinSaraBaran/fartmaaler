@@ -90,6 +90,32 @@ namespace FartmaalerAPI.Controllers
                 created
             );
         }
+        // Gruppen afslutter en session
+        [HttpPut("{id}/end")]
+        public ActionResult<Session> EndSession(int id)
+        {
+            var session = _context.Sessions.FirstOrDefault(s => s.Id == id);
+
+            if (session == null)
+                return NotFound(new { message = "Session blev ikke fundet" });
+
+            if (session.Status == "Ended")
+                return BadRequest(new { message = "Sessionen er allerede afsluttet" });
+
+            session.Status = "Ended";
+            session.EndedAt = DateTime.Now;
+
+            var group = _context.Groups.FirstOrDefault(g => g.Id == session.GroupId);
+
+            if (group != null)
+            {
+                group.IsLocked = false;
+            }
+
+            _context.SaveChanges();
+
+            return Ok(session);
+        }
 
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
