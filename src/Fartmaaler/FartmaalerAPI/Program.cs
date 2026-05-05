@@ -31,6 +31,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Group>, FartmaalerAPI.Repositories.GroupsRepo>();
+builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Session>, FartmaalerAPI.Repositories.SessionsRepo>();
+builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Measurement>, FartmaalerAPI.Repositories.MeasurementsRepo>();
+
 var app = builder.Build();
 
 // Seed admin bruger
