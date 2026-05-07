@@ -71,6 +71,7 @@ namespace FartmaalerAPI.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
+        [Authorize (Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Measurement> Delete(int id)
         {
@@ -88,7 +89,7 @@ namespace FartmaalerAPI.Controllers
             return BadRequest(new { message = "Målinger kan ikke opdateres" });
         }
 
-        [Authorize(Roles = "Teacher")]
+        [Authorize(Roles = "admin")]
         [HttpGet("live-overview")]
         public IActionResult GetLiveOverview()
         {

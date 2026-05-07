@@ -38,7 +38,7 @@ namespace FartmaalerAPI.Controllers
         }
 
         // Kun lærer/user må oprette grupper
-        [Authorize(Roles = "Teacher")]
+        [Authorize(Roles = "admin")]
         [HttpPost]
         public ActionResult<Group> Add(Group group)
         {
@@ -69,7 +69,7 @@ namespace FartmaalerAPI.Controllers
         }
 
         // Kun lærer/user må redigere grupper
-        [Authorize(Roles = "Teacher")]
+        [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Group> Update(int id, Group group)
         {
@@ -99,7 +99,7 @@ namespace FartmaalerAPI.Controllers
         }
 
         // Kun lærer/user må slette grupper
-        [Authorize(Roles = "Teacher")]
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Group> Delete(int id)
         {
@@ -129,7 +129,7 @@ namespace FartmaalerAPI.Controllers
         }
 
         // Lærer kan se grupper med sessions og målinger
-        [Authorize(Roles = "Teacher")]
+        [Authorize(Roles = "admin")]
         [HttpGet("overview")]
         public IActionResult GetGroupsOverview()
         {
