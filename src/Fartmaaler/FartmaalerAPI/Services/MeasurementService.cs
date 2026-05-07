@@ -17,6 +17,17 @@ namespace FartmaalerAPI.Services
             _context = context;
             _repo = repo;
         }
+        private double GetCo2Factor(string carType)
+        {
+            return carType?.ToLower() switch
+            {
+                "benzin lille" => 120,
+                "benzin stor" => 180,
+                "diesel" => 140,
+                "hybrid" => 90,
+                _ => 120
+            };
+        }
 
         public Measurement? CreateMeasurement(int sessionId, double timeSeconds)
         {
@@ -55,8 +66,8 @@ namespace FartmaalerAPI.Services
                 SimulatedSpeed = Math.Round(simulatedSpeedKmh, 2),
                 SpeedLimit = session.SpeedLimit,
                 Status = status,
-                Co2 = 0,
-                Co2Saved = 0,
+                Co2 = Math.Round((GetCo2Factor(session.CarType) * simulatedSpeedKmh) / 1000, 2),
+                Co2Saved = Math.Round((GetCo2Factor(session.CarType) * (session.SpeedLimit - simulatedSpeedKmh)) / 1000, 2),
                 CreatedAt = DateTime.Now
             };
 

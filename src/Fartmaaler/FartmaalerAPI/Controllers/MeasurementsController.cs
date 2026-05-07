@@ -155,18 +155,35 @@ namespace FartmaalerAPI.Controllers
                 {
                     GroupId = g.Id,
                     GroupName = g.Name,
+                    School = g.School,
 
-                    BestSpeed = _context.Measurements
+                    AvgDeviation = _context.Measurements
                         .Where(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
-                        .Max(m => (double?)m.SimulatedSpeed),
+                        .Average(m => (double?)Math.Abs(m.SimulatedSpeed - m.SpeedLimit)) ?? 0,
+
+                    AvgCo2 = _context.Measurements
+                        .Where(m => _context.Sessions
+                            .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
+                        .Average(m => (double?)m.Co2) ?? 0,
 
                     Count = _context.Measurements
                         .Count(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
                 })
-                .Where(x => x.BestSpeed != null)
-                .OrderByDescending(x => x.BestSpeed)
+                .Where(x => x.Count > 0)
+                .ToList()
+                .Select(x => new
+                {
+                    x.GroupId,
+                    x.GroupName,
+                    x.School,
+                    Score = Math.Round(x.AvgDeviation + x.AvgCo2, 2),
+                    x.AvgDeviation,
+                    x.AvgCo2,
+                    x.Count
+                })
+                .OrderBy(x => x.Score)
                 .ToList();
 
             if (!result.Any())
