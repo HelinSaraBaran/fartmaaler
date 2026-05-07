@@ -42,7 +42,8 @@ namespace TDDTest
 
             // Assert
             Assert.Null(result);
-        }
+        }           
+
 
         [Fact]
         public void CreateMeasurement_ReturnsNull_WhenTimeInvalid()
