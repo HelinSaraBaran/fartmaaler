@@ -46,14 +46,14 @@ namespace FartmaalerAPI.Repositories
             // Finder sessionen først
             var session = _context.Sessions.Find(id);
 
-            // Hvis den ikke findes, returneres null
+            // Hvis den ikke findes returneres null
             if (session == null)
                 return null;
 
             // Fjerner sessionen fra databasen
             _context.Sessions.Remove(session);
 
-            // Gemmer ændringen
+            // Gemmer ændringerne
             _context.SaveChanges();
 
             return session;
@@ -62,14 +62,14 @@ namespace FartmaalerAPI.Repositories
         // Opdaterer en eksisterende session
         public Session? Update(int id, Session updatedSession)
         {
-            // Finder den eksisterende session
+            // Finder eksisterende session
             var existing = _context.Sessions.Find(id);
 
-            // Hvis den ikke findes, returneres null
+            // Hvis sessionen ikke findes returneres null
             if (existing == null)
                 return null;
 
-            // Opdaterer alle relevante felter
+            // Opdaterer relevante felter
             existing.GroupId = updatedSession.GroupId;
             existing.CarType = updatedSession.CarType;
             existing.RoadType = updatedSession.RoadType;
@@ -78,7 +78,10 @@ namespace FartmaalerAPI.Repositories
             existing.Status = updatedSession.Status;
             existing.EndedAt = updatedSession.EndedAt;
 
-            // Gemmer ændringerne i databasen
+            // CreatedAt opdateres ikke
+            // Starttidspunktet for sessionen skal bevares
+
+            // Gemmer ændringerne
             _context.SaveChanges();
 
             return existing;

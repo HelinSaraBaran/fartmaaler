@@ -12,7 +12,7 @@ namespace FartmaalerAPI.Models
 
         // Navigation property til Group
         // Gør det muligt at hente gruppe data direkte
-        public Group Group { get; set; }
+        public Group? Group { get; set; }
 
         // Hvilken type bil der bruges i forsøget
         public string CarType { get; set; }

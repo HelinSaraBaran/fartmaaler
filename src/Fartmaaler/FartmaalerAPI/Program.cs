@@ -1,8 +1,12 @@
-using Microsoft.EntityFrameworkCore;
+using FartmaalerAPI.Data;
+using FartmaalerAPI.Models;
+using FartmaalerAPI.Repositories;
+using FartmaalerAPI.Repositories.Interfaces;
+using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using FartmaalerAPI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,10 +35,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Group>, FartmaalerAPI.Repositories.GroupsRepo>();
-builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Session>, FartmaalerAPI.Repositories.SessionsRepo>();
-builder.Services.AddScoped<FartmaalerAPI.Repositories.Interfaces.IRepository<FartmaalerAPI.Models.Measurement>, FartmaalerAPI.Repositories.MeasurementsRepo>();
-
+builder.Services.AddScoped<IRepository<Group>, GroupsRepo>();
+builder.Services.AddScoped<IRepository<Session>, SessionsRepo>();
+builder.Services.AddScoped<IRepository<Measurement>, MeasurementsRepo>();
+builder.Services.AddScoped<MeasurementsRepo>();
+builder.Services.AddScoped<MeasurementService>();
+builder.Services.AddScoped<SessionService>();
 var app = builder.Build();
 
 // Seed admin bruger
