@@ -3,6 +3,7 @@ using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
 using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FartmaalerAPI.Controllers
 {
@@ -64,25 +65,8 @@ namespace FartmaalerAPI.Controllers
             session.CreatedAt = DateTime.Now;
             session.Status = "Started";
 
-            if (session.RoadType?.ToLower() == "byzone 50")
-            {
-                session.SpeedLimit = 50;
-                session.ScalingFactor = 10;
-            }
-            else if (session.RoadType?.ToLower() == "landevej 80")
-            {
-                session.SpeedLimit = 80;
-                session.ScalingFactor = 15;
-            }
-            else if (session.RoadType?.ToLower() == "motorvej 130")
-            {
-                session.SpeedLimit = 130;
-                session.ScalingFactor = 20;
-            }
-            else
-            {
-                return BadRequest(new { message = "Ugyldig vejtype" });
-            }
+            session.SpeedLimit = _sessionService.GetSpeedLimit(session.RoadType);
+            session.ScalingFactor = _sessionService.GetScalingFactor(session.RoadType);
 
             group.IsLocked = true;
 
@@ -125,6 +109,7 @@ namespace FartmaalerAPI.Controllers
             return Ok(history);
         }
 
+        [Authorize]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
         {
@@ -136,6 +121,7 @@ namespace FartmaalerAPI.Controllers
             return Ok(updated);
         }
 
+        [Authorize]
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
         {

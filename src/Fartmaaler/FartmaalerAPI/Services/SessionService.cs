@@ -16,6 +16,32 @@ namespace FartmaalerAPI.Services
             _context = context;
         }
 
+        // Returnerer hastighedsgrænsen baseret på vejtype
+        // Bruges når en session oprettes
+        public int GetSpeedLimit(string roadType)
+        {
+            return roadType?.ToLower() switch
+            {
+                "byzone 50" => 50,
+                "landevej 80" => 80,
+                "motorvej 130" => 130,
+                _ => 50
+            };
+        }
+
+        // Returnerer skaleringsfaktoren baseret på vejtype
+        // Legetøjsbilens hastighed ganges med denne for at simulere realistiske tal
+        public double GetScalingFactor(string roadType)
+        {
+            return roadType?.ToLower() switch
+            {
+                "byzone 50" => 10,
+                "landevej 80" => 15,
+                "motorvej 130" => 20,
+                _ => 10
+            };
+        }
+
         // Afslutter en session og frigiver gruppen igen
         public Session? EndSession(int id)
         {
