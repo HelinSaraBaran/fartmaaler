@@ -22,11 +22,12 @@ namespace FartmaalerAPI.Services
             // Finder session ud fra id
             var session = _context.Sessions.FirstOrDefault(s => s.Id == id);
 
+            // Hvis session ikke findes returneres null
             if (session == null)
                 return null;
 
             // Hvis session allerede er afsluttet returneres den bare
-            if (session.Status == "Ended")
+            if (session.Status?.ToLower() == "ended")
                 return session;
 
             // Sætter session som afsluttet
@@ -59,6 +60,7 @@ namespace FartmaalerAPI.Services
             // Finder gruppen
             var group = _context.Groups.FirstOrDefault(g => g.Id == groupId);
 
+            // Hvis gruppen ikke findes returneres null
             if (group == null)
                 return null;
 
@@ -83,7 +85,7 @@ namespace FartmaalerAPI.Services
                     .ToList();
             }
 
-            // Filtrerer fra en bestemt dato hvis startDate er valgt
+            // Filtrerer fra bestemt dato
             if (startDate.HasValue)
             {
                 sessions = sessions
@@ -91,7 +93,7 @@ namespace FartmaalerAPI.Services
                     .ToList();
             }
 
-            // Filtrerer til en bestemt dato hvis endDate er valgt
+            // Filtrerer til bestemt dato
             if (endDate.HasValue)
             {
                 sessions = sessions
@@ -122,7 +124,7 @@ namespace FartmaalerAPI.Services
                         .Where(m => m.SessionId == s.Id)
                         .Average(m => (double?)m.SimulatedSpeed) ?? 0,
 
-                    // Gennemsnit CO2
+                    // Gennemsnitlig CO2
                     AverageCo2 = _context.Measurements
                         .Where(m => m.SessionId == s.Id)
                         .Average(m => (double?)m.Co2) ?? 0,

@@ -1,79 +1,76 @@
 ﻿using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
+using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FartmaalerAPI.Controllers
 {
-    // Denne controller håndterer målinger i systemet
-    // Målinger bruges til historik, live oversigt og leaderboard
     [ApiController]
     [Route("api/[controller]")]
     public class MeasurementsController : ControllerBase
     {
-        // Repository bruges til basic CRUD
         private readonly IRepository<Measurement> _repo;
-
-        // DbContext bruges til opslag på tværs af tabeller
         private readonly AppDbContext _context;
+        private readonly MeasurementService _measurementService;
 
-        // Constructor modtager dependencies via dependency injection
-        public MeasurementsController(IRepository<Measurement> repo, AppDbContext context)
+        public MeasurementsController(
+            IRepository<Measurement> repo,
+            AppDbContext context,
+            MeasurementService measurementService)
         {
             _repo = repo;
             _context = context;
+            _measurementService = measurementService;
         }
 
-        // Henter alle målinger
         [HttpGet]
         public ActionResult<IEnumerable<Measurement>> GetAll()
         {
             return Ok(_repo.GetAll());
         }
 
-        // Henter en måling ud fra id
         [HttpGet("{id}")]
         public ActionResult<Measurement> GetById(int id)
         {
             var measurement = _repo.GetById(id);
 
-            // Hvis måling ikke findes returneres 404
             if (measurement == null)
                 return NotFound(new { message = "Måling blev ikke fundet" });
 
             return Ok(measurement);
         }
 
-        // Opretter en ny måling
-        // Bruges når sensor eller gruppe sender data
+        // Opretter en måling ud fra sessionId og tid mellem sensorerne
         [HttpPost]
         public ActionResult<Measurement> Add(Measurement measurement)
         {
-            // Tjekker at sessionId er valid
             if (measurement.SessionId <= 0)
                 return BadRequest(new { message = "SessionId er påkrævet" });
 
-            // Finder sessionen
+            if (measurement.Time <= 0)
+                return BadRequest(new { message = "Tid skal være større end 0" });
+
             var session = _context.Sessions.FirstOrDefault(s => s.Id == measurement.SessionId);
 
             if (session == null)
                 return NotFound(new { message = "Session blev ikke fundet" });
 
-            // Må ikke tilføje målinger til afsluttet session
-            if (session.Status == "Ended")
+            if (session.Status?.ToLower() == "ended")
                 return BadRequest(new { message = "Der kan ikke tilføjes målinger til en afsluttet session" });
 
-            // Sætter tidspunkt for målingen
-            measurement.CreatedAt = DateTime.Now;
+            var created = _measurementService.CreateMeasurement(
+                measurement.SessionId,
+                measurement.Time
+            );
 
-            // Gemmer målingen
-            var created = _repo.Add(measurement);
+            if (created == null)
+                return BadRequest(new { message = "Målingen kunne ikke oprettes" });
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        // Sletter en måling
         [HttpDelete("{id}")]
         public ActionResult<Measurement> Delete(int id)
         {
@@ -85,21 +82,16 @@ namespace FartmaalerAPI.Controllers
             return Ok(deleted);
         }
 
-        // Målinger må ikke opdateres
         [HttpPut("{id}")]
         public IActionResult Update(int id, Measurement measurement)
         {
             return BadRequest(new { message = "Målinger kan ikke opdateres" });
         }
 
-        // Live oversigt for underviser
-        // Viser alle grupper og deres seneste måling
-        // Viser også status hvis gruppen ikke har målt endnu
         [Authorize(Roles = "Teacher")]
         [HttpGet("live-overview")]
         public IActionResult GetLiveOverview()
         {
-            // Henter alle grupper
             var result = _context.Groups
                 .Select(g => new
                 {
@@ -108,7 +100,6 @@ namespace FartmaalerAPI.Controllers
                     School = g.School,
                     IsLocked = g.IsLocked,
 
-                    // Finder gruppens nyeste session
                     LatestSession = _context.Sessions
                         .Where(s => s.GroupId == g.Id)
                         .OrderByDescending(s => s.CreatedAt)
@@ -124,7 +115,6 @@ namespace FartmaalerAPI.Controllers
                         })
                         .FirstOrDefault(),
 
-                    // Finder gruppens nyeste måling
                     LatestMeasurement = _context.Measurements
                         .Where(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
@@ -137,13 +127,14 @@ namespace FartmaalerAPI.Controllers
                             m.SimulatedSpeed,
                             m.Time,
                             m.Distance,
+                            m.SpeedLimit,
+                            m.Status,
                             m.Co2,
                             m.Co2Saved,
                             m.CreatedAt
                         })
                         .FirstOrDefault(),
 
-                    // Viser status til frontend
                     Status = _context.Measurements
                         .Any(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
@@ -155,8 +146,6 @@ namespace FartmaalerAPI.Controllers
             return Ok(result);
         }
 
-        // Leaderboard
-        // Viser grupper sorteret efter bedste hastighed
         [HttpGet("leaderboard")]
         public IActionResult GetLeaderboard()
         {
@@ -166,13 +155,11 @@ namespace FartmaalerAPI.Controllers
                     GroupId = g.Id,
                     GroupName = g.Name,
 
-                    // Finder højeste hastighed for gruppen
                     BestSpeed = _context.Measurements
                         .Where(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
                         .Max(m => (double?)m.SimulatedSpeed),
 
-                    // Tæller antal målinger
                     Count = _context.Measurements
                         .Count(m => _context.Sessions
                             .Any(s => s.Id == m.SessionId && s.GroupId == g.Id))
@@ -187,17 +174,14 @@ namespace FartmaalerAPI.Controllers
             return Ok(result);
         }
 
-        // Henter alle målinger for en session
         [HttpGet("session/{sessionId}")]
         public IActionResult GetMeasurementsBySession(int sessionId)
         {
-            // Tjekker om session findes
             var session = _context.Sessions.FirstOrDefault(s => s.Id == sessionId);
 
             if (session == null)
                 return NotFound(new { message = "Session blev ikke fundet" });
 
-            // Henter målinger sorteret nyeste først
             var measurements = _context.Measurements
                 .Where(m => m.SessionId == sessionId)
                 .OrderByDescending(m => m.CreatedAt)
@@ -206,23 +190,18 @@ namespace FartmaalerAPI.Controllers
             return Ok(measurements);
         }
 
-        // Henter opsummering for en session
-        // Bruges efter session er afsluttet
         [HttpGet("session/{sessionId}/summary")]
         public IActionResult GetSessionSummary(int sessionId)
         {
-            // Finder sessionen
             var session = _context.Sessions.FirstOrDefault(s => s.Id == sessionId);
 
             if (session == null)
                 return NotFound(new { message = "Session blev ikke fundet" });
 
-            // Henter alle målinger
             var measurements = _context.Measurements
                 .Where(m => m.SessionId == sessionId)
                 .ToList();
 
-            // Hvis ingen målinger returneres 0 værdier
             if (!measurements.Any())
                 return Ok(new
                 {
@@ -232,7 +211,6 @@ namespace FartmaalerAPI.Controllers
                     TotalCo2Saved = 0
                 });
 
-            // Beregner opsummering
             var result = new
             {
                 Count = measurements.Count,
