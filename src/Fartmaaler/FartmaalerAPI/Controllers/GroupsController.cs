@@ -1,4 +1,5 @@
 ﻿using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -40,62 +41,61 @@ namespace FartmaalerAPI.Controllers
         // Kun lærer/user må oprette grupper
         [Authorize(Roles = "admin")]
         [HttpPost]
-        public ActionResult<Group> Add(Group group)
+        public ActionResult<Group> Add([FromBody] CreateGroupRequest request)
         {
-            if (string.IsNullOrWhiteSpace(group.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest(new { message = "Gruppens navn skal udfyldes" });
 
-            group.Name = group.Name.Trim();
-
-            string teacherSchool = "Køge Skole"; // den skole er hardcoded
+            string name = request.Name.Trim();
+            string teacherSchool = "Køge Skole";
 
             bool groupAlreadyExists = _context.Groups
-                .Any(g => g.Name.ToLower() == group.Name.ToLower()
+                .Any(g => g.Name.ToLower() == name.ToLower()
                        && g.School == teacherSchool);
 
             if (groupAlreadyExists)
                 return BadRequest(new { message = "Der findes allerede en gruppe med dette navn på skolen" });
 
-            group.School = teacherSchool;
-            group.IsLocked = false;
+            var group = new Group
+            {
+                Name = name,
+                School = teacherSchool,
+                IsLocked = false
+            };
 
             var created = _repo.Add(group);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = created.Id },
-                created
-            );
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         // Kun lærer/user må redigere grupper
         [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
-        public ActionResult<Group> Update(int id, Group group)
+        public ActionResult<Group> Update(int id, [FromBody] UpdateGroupRequest request)
         {
-            if (string.IsNullOrWhiteSpace(group.Name))
+            if (string.IsNullOrWhiteSpace(request.Name))
                 return BadRequest(new { message = "Gruppens navn skal udfyldes" });
 
-            group.Name = group.Name.Trim();
-
+            string name = request.Name.Trim();
             string teacherSchool = "Køge Skole";
 
             bool groupAlreadyExists = _context.Groups
                 .Any(g => g.Id != id
-                       && g.Name.ToLower() == group.Name.ToLower()
+                       && g.Name.ToLower() == name.ToLower()
                        && g.School == teacherSchool);
 
             if (groupAlreadyExists)
                 return BadRequest(new { message = "Der findes allerede en gruppe med dette navn på skolen" });
 
-            group.School = teacherSchool;
-
-            var updated = _repo.Update(id, group);
-
-            if (updated == null)
+            var existing = _context.Groups.Find(id);
+            if (existing == null)
                 return NotFound(new { message = "Gruppen blev ikke fundet" });
 
-            return Ok(updated);
+            existing.Name = name;
+            existing.School = teacherSchool;
+            _context.SaveChanges();
+
+            return Ok(existing);
         }
 
         // Kun lærer/user må slette grupper

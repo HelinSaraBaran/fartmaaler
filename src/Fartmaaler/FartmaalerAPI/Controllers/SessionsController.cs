@@ -4,6 +4,7 @@ using FartmaalerAPI.Repositories.Interfaces;
 using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using FartmaalerAPI.DTOs;
 
 namespace FartmaalerAPI.Controllers
 {
@@ -43,18 +44,18 @@ namespace FartmaalerAPI.Controllers
         }
 
         [HttpPost]
-        public ActionResult<Session> Add(Session session)
+        public ActionResult<Session> Add([FromBody] StartSessionRequest request)
         {
-            if (session.GroupId <= 0)
+            if (request.GroupId <= 0)
                 return BadRequest(new { message = "GroupId er påkrævet" });
 
-            if (string.IsNullOrWhiteSpace(session.CarType))
+            if (string.IsNullOrWhiteSpace(request.CarType))
                 return BadRequest(new { message = "Biltype er påkrævet" });
 
-            if (string.IsNullOrWhiteSpace(session.RoadType))
+            if (string.IsNullOrWhiteSpace(request.RoadType))
                 return BadRequest(new { message = "Vejtype er påkrævet" });
 
-            var group = _context.Groups.FirstOrDefault(g => g.Id == session.GroupId);
+            var group = _context.Groups.FirstOrDefault(g => g.Id == request.GroupId);
 
             if (group == null)
                 return NotFound(new { message = "Gruppen blev ikke fundet" });
@@ -62,14 +63,18 @@ namespace FartmaalerAPI.Controllers
             if (group.IsLocked)
                 return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
 
-            session.CreatedAt = DateTime.Now;
-            session.Status = "Started";
-
-            session.SpeedLimit = _sessionService.GetSpeedLimit(session.RoadType);
-            session.ScalingFactor = _sessionService.GetScalingFactor(session.RoadType);
+            var session = new Session
+            {
+                GroupId = request.GroupId,
+                CarType = request.CarType,
+                RoadType = request.RoadType,
+                SpeedLimit = _sessionService.GetSpeedLimit(request.RoadType),
+                ScalingFactor = _sessionService.GetScalingFactor(request.RoadType),
+                Status = "Started",
+                CreatedAt = DateTime.Now
+            };
 
             group.IsLocked = true;
-
             var created = _repo.Add(session);
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
