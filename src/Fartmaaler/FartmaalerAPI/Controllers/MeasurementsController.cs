@@ -1,9 +1,11 @@
 ﻿using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
 using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
 
 namespace FartmaalerAPI.Controllers
 {
@@ -44,15 +46,15 @@ namespace FartmaalerAPI.Controllers
 
         // Opretter en måling ud fra sessionId og tid mellem sensorerne
         [HttpPost]
-        public ActionResult<Measurement> Add(Measurement measurement)
+        public ActionResult<Measurement> Add([FromBody] CreateMeasurementRequest request)
         {
-            if (measurement.SessionId <= 0)
+            if (request.SessionId <= 0)
                 return BadRequest(new { message = "SessionId er påkrævet" });
 
-            if (measurement.Time <= 0)
+            if (request.Time <= 0)
                 return BadRequest(new { message = "Tid skal være større end 0" });
 
-            var session = _context.Sessions.FirstOrDefault(s => s.Id == measurement.SessionId);
+            var session = _context.Sessions.FirstOrDefault(s => s.Id == request.SessionId);
 
             if (session == null)
                 return NotFound(new { message = "Session blev ikke fundet" });
@@ -61,8 +63,8 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Der kan ikke tilføjes målinger til en afsluttet session" });
 
             var created = _measurementService.CreateMeasurement(
-                measurement.SessionId,
-                measurement.Time
+                request.SessionId,
+                request.Time
             );
 
             if (created == null)
