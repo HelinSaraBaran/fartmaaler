@@ -83,7 +83,21 @@ using (var scope = app.Services.CreateScope())
         });
         context.SaveChanges();
     }
+
+    if (!context.Settings.Any())
+    {
+        context.Settings.AddRange(
+            new FartmaalerAPI.Models.Settings { Key = "TTS", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "BipLyd", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "FunFacts", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "Leaderboard", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "VisuelFeedback", Value = true }
+        );
+        context.SaveChanges();
+    }
 }
+
+
 
 if (app.Environment.IsDevelopment())
 {

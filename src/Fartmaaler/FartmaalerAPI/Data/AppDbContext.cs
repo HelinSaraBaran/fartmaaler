@@ -26,5 +26,9 @@ namespace FartmaalerAPI.Data
         // Measurements bliver til en tabel
         // Indeholder selve målingerne (hastighed, tid osv.)
         public DbSet<Measurement> Measurements { get; set; }
+
+        // Settings bliver til en tabel
+        // Indeholder Settings objekter
+        public DbSet<Settings> Settings { get; set; }
     }
 }
