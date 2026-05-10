@@ -114,7 +114,7 @@ namespace FartmaalerAPI.Controllers
             return Ok(history);
         }
 
-        [Authorize]
+        [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
         {
@@ -126,7 +126,7 @@ namespace FartmaalerAPI.Controllers
             return Ok(updated);
         }
 
-        [Authorize]
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
         {
@@ -136,6 +136,60 @@ namespace FartmaalerAPI.Controllers
                 return NotFound(new { message = "Session blev ikke fundet" });
 
             return Ok(deleted);
+        }
+
+        // DELETE /api/sessions/all — slet alle sessions og målinger (kun admin)
+        [Authorize(Roles = "admin")]
+        [HttpDelete("all")]
+        public IActionResult DeleteAll()
+        {
+            try
+            {
+                _context.Measurements.RemoveRange(_context.Measurements);
+                _context.Sessions.RemoveRange(_context.Sessions);
+
+                // Frigør alle grupper
+                var groups = _context.Groups.Where(g => g.IsLocked).ToList();
+                foreach (var group in groups)
+                {
+                    group.IsLocked = false;
+                }
+
+                _context.SaveChanges();
+                return Ok(new { message = "Al historik er slettet" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+            }
+        }
+
+        // GET /api/sessions/class-summary — gennemsnit for hele klassen (kun admin)
+        [Authorize(Roles = "admin")]
+        [HttpGet("class-summary")]
+        public IActionResult GetClassSummary()
+        {
+            try
+            {
+                var measurements = _context.Measurements.ToList();
+
+                if (!measurements.Any())
+                    return Ok(new { message = "Ingen data endnu", count = 0 });
+
+                return Ok(new
+                {
+                    TotalMeasurements = measurements.Count,
+                    AverageSpeed = Math.Round(measurements.Average(m => m.SimulatedSpeed), 2),
+                    AverageCo2 = Math.Round(measurements.Average(m => m.Co2), 2),
+                    AverageDeviation = Math.Round(measurements.Average(m => Math.Abs(m.SimulatedSpeed - m.SpeedLimit)), 2),
+                    AverageScore = Math.Round(measurements.Average(m => Math.Abs(m.SimulatedSpeed - m.SpeedLimit) + m.Co2), 2),
+                    TotalSessions = _context.Sessions.Count()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+            }
         }
     }
 }
