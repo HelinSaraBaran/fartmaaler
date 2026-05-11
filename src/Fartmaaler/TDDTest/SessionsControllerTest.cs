@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using FartmaalerAPI.Services;
@@ -21,7 +22,7 @@ namespace TDDTest
 
         public SessionsControllerTest()
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>()
+            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
@@ -52,7 +53,7 @@ namespace TDDTest
             {
                 GroupId = groupId,
                 CarType = "Toy car",
-                RoadType = "Byzone 50",
+                RoadType = "byzone 50",
                 SpeedLimit = 50,
                 ScalingFactor = 10,
                 Status = status,
@@ -60,13 +61,23 @@ namespace TDDTest
             };
         }
 
+        private StartSessionRequest CreateStartSessionRequest(int groupId)
+        {
+            return new StartSessionRequest
+            {
+                GroupId = groupId,
+                CarType = "Toy car",
+                RoadType = "byzone 50"
+            };
+        }
+
         [Fact]
         public void GetAll_WhenNoSessionsExist_ReturnsOkWithEmptyList()
         {
-            var result = _controller.GetAll();
+            ActionResult<IEnumerable<Session>> result = _controller.GetAll();
 
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            IEnumerable<Session> sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
 
             Assert.Empty(sessions);
         }
@@ -74,7 +85,7 @@ namespace TDDTest
         [Fact]
         public void GetAll_WhenSessionsExist_ReturnsOkWithAllSessions()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
@@ -83,12 +94,13 @@ namespace TDDTest
                 CreateSession(group.Id),
                 CreateSession(group.Id)
             );
+
             _context.SaveChanges();
 
-            var result = _controller.GetAll();
+            ActionResult<IEnumerable<Session>> result = _controller.GetAll();
 
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            IEnumerable<Session> sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
 
             Assert.Equal(3, sessions.Count());
         }
@@ -96,18 +108,18 @@ namespace TDDTest
         [Fact]
         public void GetById_WhenSessionExists_ReturnsOkWithSession()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            Session session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var result = _controller.GetById(session.Id);
+            ActionResult<Session> result = _controller.GetById(session.Id);
 
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedSession = Assert.IsType<Session>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            Session returnedSession = Assert.IsType<Session>(okResult.Value);
 
             Assert.Equal(session.Id, returnedSession.Id);
         }
@@ -115,7 +127,7 @@ namespace TDDTest
         [Fact]
         public void GetById_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            var result = _controller.GetById(999);
+            ActionResult<Session> result = _controller.GetById(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -123,13 +135,13 @@ namespace TDDTest
         [Fact]
         public void Add_ValidSession_ReturnsCreated()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            StartSessionRequest request = CreateStartSessionRequest(group.Id);
 
-            var result = _controller.Add(session);
+            ActionResult<Session> result = _controller.Add(request);
 
             Assert.IsType<CreatedAtActionResult>(result.Result);
             Assert.Single(_context.Sessions);
@@ -138,19 +150,19 @@ namespace TDDTest
         [Fact]
         public void Add_ValidSession_SavesCorrectProperties()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            StartSessionRequest request = CreateStartSessionRequest(group.Id);
 
-            _controller.Add(session);
+            _controller.Add(request);
 
-            var savedSession = _context.Sessions.First();
+            Session savedSession = _context.Sessions.First();
 
             Assert.Equal(group.Id, savedSession.GroupId);
             Assert.Equal("Toy car", savedSession.CarType);
-            Assert.Equal("Byzone 50", savedSession.RoadType);
+            Assert.Equal("byzone 50", savedSession.RoadType);
             Assert.Equal(50, savedSession.SpeedLimit);
             Assert.Equal(10, savedSession.ScalingFactor);
             Assert.Equal("Started", savedSession.Status);
@@ -159,9 +171,9 @@ namespace TDDTest
         [Fact]
         public void Add_WhenGroupIdInvalid_ReturnsBadRequest()
         {
-            var session = CreateSession(0);
+            StartSessionRequest request = CreateStartSessionRequest(0);
 
-            var result = _controller.Add(session);
+            ActionResult<Session> result = _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -169,40 +181,44 @@ namespace TDDTest
         [Fact]
         public void Add_WhenGroupDoesNotExist_ReturnsNotFound()
         {
-            var session = CreateSession(999);
+            StartSessionRequest request = CreateStartSessionRequest(999);
 
-            var result = _controller.Add(session);
+            ActionResult<Session> result = _controller.Add(request);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
 
         [Fact]
-        public void Add_WhenRoadTypeInvalid_ReturnsBadRequest()
+        public void Add_WhenRoadTypeInvalid_ReturnsCreatedBecauseServiceUsesDefault()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
-            session.RoadType = "Forkert vejtype";
+            StartSessionRequest request = new StartSessionRequest
+            {
+                GroupId = group.Id,
+                CarType = "Toy car",
+                RoadType = "Forkert vejtype"
+            };
 
-            var result = _controller.Add(session);
+            ActionResult<Session> result = _controller.Add(request);
 
-            Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.IsType<CreatedAtActionResult>(result.Result);
         }
 
         [Fact]
         public void Add_WhenGroupIsLocked_ReturnsBadRequest()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             group.IsLocked = true;
 
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            StartSessionRequest request = CreateStartSessionRequest(group.Id);
 
-            var result = _controller.Add(session);
+            ActionResult<Session> result = _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -210,15 +226,15 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenSessionExists_ReturnsOk()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            Session session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var result = _controller.Delete(session.Id);
+            ActionResult<Session> result = _controller.Delete(session.Id);
 
             Assert.IsType<OkObjectResult>(result.Result);
         }
@@ -226,7 +242,7 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            var result = _controller.Delete(999);
+            ActionResult<Session> result = _controller.Delete(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -234,18 +250,18 @@ namespace TDDTest
         [Fact]
         public void Update_WhenSessionExists_ReturnsOk()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            Session session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var updatedSession = CreateSession(group.Id);
+            Session updatedSession = CreateSession(group.Id);
             updatedSession.CarType = "Updated car";
 
-            var result = _controller.Update(session.Id, updatedSession);
+            ActionResult<Session> result = _controller.Update(session.Id, updatedSession);
 
             Assert.IsType<OkObjectResult>(result.Result);
         }
@@ -253,13 +269,13 @@ namespace TDDTest
         [Fact]
         public void Update_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var updatedSession = CreateSession(group.Id);
+            Session updatedSession = CreateSession(group.Id);
 
-            var result = _controller.Update(999, updatedSession);
+            ActionResult<Session> result = _controller.Update(999, updatedSession);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -267,19 +283,19 @@ namespace TDDTest
         [Fact]
         public void EndSession_WhenSessionExists_ReturnsOkAndChangesStatus()
         {
-            var group = CreateGroup();
+            Group group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            var session = CreateSession(group.Id);
+            Session session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var result = _controller.EndSession(session.Id);
+            ActionResult<Session> result = _controller.EndSession(session.Id);
 
             Assert.IsType<OkObjectResult>(result.Result);
 
-            var updatedSession = _context.Sessions.First();
+            Session updatedSession = _context.Sessions.First();
 
             Assert.Equal("Ended", updatedSession.Status);
             Assert.NotNull(updatedSession.EndedAt);
@@ -288,7 +304,7 @@ namespace TDDTest
         [Fact]
         public void EndSession_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            var result = _controller.EndSession(999);
+            ActionResult<Session> result = _controller.EndSession(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
