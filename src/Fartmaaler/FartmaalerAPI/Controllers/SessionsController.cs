@@ -31,19 +31,19 @@ namespace FartmaalerAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Session>> GetAll()
         {
-            return Ok(_repo.GetAll()); // 200
+            return Ok(_repo.GetAll());
         }
 
         // Henter session ud fra id
         [HttpGet("{id}")]
         public ActionResult<Session> GetById(int id)
         {
-            var session = _repo.GetById(id);
+            Session? session = _repo.GetById(id);
 
             if (session == null)
-                return NotFound(new { message = "Session blev ikke fundet" }); // 404
+                return NotFound(new { message = "Session blev ikke fundet" });
 
-            return Ok(session); // 200
+            return Ok(session);
         }
 
         // Opretter en ny session
@@ -52,36 +52,35 @@ namespace FartmaalerAPI.Controllers
         {
             // Tjekker om group id er gyldigt
             if (request.GroupId <= 0)
-                return BadRequest(new { message = "GroupId er påkrævet" }); // 400
+                return BadRequest(new { message = "GroupId er påkrævet" });
 
             // Tjekker om biltype er udfyldt
             if (string.IsNullOrWhiteSpace(request.CarType))
-                return BadRequest(new { message = "Biltype er påkrævet" }); // 400
+                return BadRequest(new { message = "Biltype er påkrævet" });
 
             // Tjekker om vejtype er udfyldt
             if (string.IsNullOrWhiteSpace(request.RoadType))
-                return BadRequest(new { message = "Vejtype er påkrævet" }); // 400
+                return BadRequest(new { message = "Vejtype er påkrævet" });
 
             // Tjekker om vejtypen er gyldig
             if (request.RoadType.ToLower() != "byzone 50" &&
                 request.RoadType.ToLower() != "landevej 80" &&
                 request.RoadType.ToLower() != "motorvej 130")
-                return BadRequest(new { message = "Vejtypen er ikke gyldig" }); // 400
+                return BadRequest(new { message = "Vejtypen er ikke gyldig" });
 
             // Finder gruppen i databasen
-            var group = _context.Groups
-                .FirstOrDefault(g => g.Id == request.GroupId);
+            Group? group = _context.Groups
+                .FirstOrDefault(group => group.Id == request.GroupId);
 
-            // Returnerer fejl hvis gruppen ikke findes
             if (group == null)
-                return NotFound(new { message = "Gruppen blev ikke fundet" }); // 404
+                return NotFound(new { message = "Gruppen blev ikke fundet" });
 
             // Tjekker om gruppen allerede har en aktiv session
             if (group.IsLocked)
-                return BadRequest(new { message = "Gruppen er allerede i gang med en session" }); // 400
+                return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
 
             // Opretter session objekt
-            var session = new Session
+            Session session = new Session
             {
                 GroupId = request.GroupId,
                 CarType = request.CarType,
@@ -95,82 +94,79 @@ namespace FartmaalerAPI.Controllers
             // Låser gruppen mens sessionen kører
             group.IsLocked = true;
 
-            // Gemmer sessionen
-            var created = _repo.Add(session);
+            Session created = _repo.Add(session);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created); // 201
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         // Afslutter en session
         [HttpPut("{id}/end")]
         public ActionResult<Session> EndSession(int id)
         {
-            // Finder sessionen
-            var existing = _context.Sessions
-                .FirstOrDefault(s => s.Id == id);
+            Session? existing = _context.Sessions
+                .FirstOrDefault(session => session.Id == id);
 
-            // Returnerer fejl hvis session ikke findes
             if (existing == null)
-                return NotFound(new { message = "Session blev ikke fundet" }); // 404
+                return NotFound(new { message = "Session blev ikke fundet" });
 
-            // Afslutter sessionen via service
-            var endedSession = _sessionService.EndSession(id);
+            Session? endedSession = _sessionService.EndSession(id);
 
-            return Ok(endedSession); // 200
+            return Ok(endedSession);
         }
 
-        // Henter historik for en gruppe
+        // Henter historik for en gruppe med filter og sortering
         [HttpGet("group/{groupId}/history")]
         public IActionResult GetHistoryByGroup(
             int groupId,
             string? carType,
             string? roadType,
             DateTime? startDate,
-            DateTime? endDate)
+            DateTime? endDate,
+            string? sortBy,
+            string? sortDirection)
         {
-            var history = _sessionService.GetHistoryByGroup(
+            object? history = _sessionService.GetHistoryByGroup(
                 groupId,
                 carType,
                 roadType,
                 startDate,
-                endDate);
+                endDate,
+                sortBy,
+                sortDirection);
 
-            // Returnerer fejl hvis gruppen ikke findes
             if (history == null)
-                return NotFound(new { message = "Gruppen blev ikke fundet" }); // 404
+                return NotFound(new { message = "Gruppen blev ikke fundet" });
 
-            return Ok(history); // 200
+            return Ok(history);
         }
 
         // Opdaterer en session
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
         {
-            var updated = _repo.Update(id, session);
+            Session? updated = _repo.Update(id, session);
 
-            // Returnerer fejl hvis session ikke findes
             if (updated == null)
-                return NotFound(new { message = "Session blev ikke fundet" }); // 404
+                return NotFound(new { message = "Session blev ikke fundet" });
 
-            return Ok(updated); // 200
+            return Ok(updated);
         }
 
         // Sletter en session
-        [Authorize(Roles ="admin")]
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
         {
-            var deleted = _repo.Delete(id);
+            Session? deleted = _repo.Delete(id);
 
-            // Returnerer fejl hvis session ikke findes
             if (deleted == null)
-                return NotFound(new { message = "Session blev ikke fundet" }); // 404
+                return NotFound(new { message = "Session blev ikke fundet" });
 
-            return Ok(deleted); // 200
+            return Ok(deleted);
         }
 
-        // DELETE /api/sessions/all — slet alle sessions og målinger (kun admin)
+        // Sletter alle sessions og målinger
         [Authorize(Roles = "admin")]
         [HttpDelete("all")]
         public IActionResult DeleteAll()
@@ -181,13 +177,17 @@ namespace FartmaalerAPI.Controllers
                 _context.Sessions.RemoveRange(_context.Sessions);
 
                 // Frigør alle grupper
-                var groups = _context.Groups.Where(g => g.IsLocked).ToList();
-                foreach (var group in groups)
+                List<Group> groups = _context.Groups
+                    .Where(group => group.IsLocked)
+                    .ToList();
+
+                foreach (Group group in groups)
                 {
                     group.IsLocked = false;
                 }
 
                 _context.SaveChanges();
+
                 return Ok(new { message = "Al historik er slettet" });
             }
             catch (Exception ex)
@@ -196,14 +196,14 @@ namespace FartmaalerAPI.Controllers
             }
         }
 
-        // GET /api/sessions/class-summary — gennemsnit for hele klassen (kun admin)
+        // Henter gennemsnit for hele klassen
         [Authorize(Roles = "admin")]
         [HttpGet("class-summary")]
         public IActionResult GetClassSummary()
         {
             try
             {
-                var measurements = _context.Measurements.ToList();
+                List<Measurement> measurements = _context.Measurements.ToList();
 
                 if (!measurements.Any())
                     return Ok(new { message = "Ingen data endnu", count = 0 });
@@ -211,10 +211,10 @@ namespace FartmaalerAPI.Controllers
                 return Ok(new
                 {
                     TotalMeasurements = measurements.Count,
-                    AverageSpeed = Math.Round(measurements.Average(m => m.SimulatedSpeed), 2),
-                    AverageCo2 = Math.Round(measurements.Average(m => m.Co2), 2),
-                    AverageDeviation = Math.Round(measurements.Average(m => Math.Abs(m.SimulatedSpeed - m.SpeedLimit)), 2),
-                    AverageScore = Math.Round(measurements.Average(m => Math.Abs(m.SimulatedSpeed - m.SpeedLimit) + m.Co2), 2),
+                    AverageSpeed = Math.Round(measurements.Average(measurement => measurement.SimulatedSpeed), 2),
+                    AverageCo2 = Math.Round(measurements.Average(measurement => measurement.Co2), 2),
+                    AverageDeviation = Math.Round(measurements.Average(measurement => Math.Abs(measurement.SimulatedSpeed - measurement.SpeedLimit)), 2),
+                    AverageScore = Math.Round(measurements.Average(measurement => Math.Abs(measurement.SimulatedSpeed - measurement.SpeedLimit) + measurement.Co2), 2),
                     TotalSessions = _context.Sessions.Count()
                 });
             }

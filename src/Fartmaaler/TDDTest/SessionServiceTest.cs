@@ -107,6 +107,8 @@ namespace TDDTest
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
 
             Assert.Null(result);
@@ -142,6 +144,8 @@ namespace TDDTest
                 null,
                 null,
                 null,
+                null,
+                null,
                 null);
 
             Assert.NotNull(result);
@@ -168,6 +172,8 @@ namespace TDDTest
             object? result = _sessionService.GetHistoryByGroup(
                 group.Id,
                 "Toy car",
+                null,
+                null,
                 null,
                 null,
                 null);
