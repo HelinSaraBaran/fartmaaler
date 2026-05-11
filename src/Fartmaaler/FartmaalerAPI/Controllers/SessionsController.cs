@@ -114,7 +114,8 @@ namespace FartmaalerAPI.Controllers
             return Ok(history);
         }
 
-        [Authorize]
+        // Opdaterer en session
+        [Authorize(Roles ="admin")]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
         {
@@ -126,7 +127,8 @@ namespace FartmaalerAPI.Controllers
             return Ok(updated);
         }
 
-        [Authorize]
+        // Sletter en session
+        [Authorize(Roles ="admin")]
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
         {
