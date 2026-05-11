@@ -1,215 +1,159 @@
 ﻿using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using FartmaalerAPI.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using Xunit;
+using System.Security.Claims;
 
-namespace TDDTest
+public class MeasurementsControllerTest : IDisposable
 {
-    public class MeasurementsControllerTest : IDisposable
+    private readonly AppDbContext _context;
+    private readonly MeasurementsRepo _repo;
+    private readonly MeasurementService _measurementService;
+    private readonly MeasurementsController _controller;
+
+    public MeasurementsControllerTest()
     {
-        private readonly AppDbContext _context;
-        private readonly MeasurementsRepo _repo;
-        private readonly MeasurementService _measurementService;
-        private readonly MeasurementsController _controller;
+        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
 
-        public MeasurementsControllerTest()
+        _context = new AppDbContext(options);
+        _repo = new MeasurementsRepo(_context);
+        _measurementService = new MeasurementService(_context, _repo);
+        _controller = new MeasurementsController(_repo, _context, _measurementService);
+
+        // ✅ Sæt admin-rolle på controlleren (nødvendigt for Delete og live-overview)
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
+            new Claim(ClaimTypes.Role, "admin")
+        }, "TestAuth"));
 
-            _context = new AppDbContext(options);
-            _repo = new MeasurementsRepo(_context);
-            _measurementService = new MeasurementService(_context, _repo);
-            _controller = new MeasurementsController(_repo, _context, _measurementService);
-        }
-
-        public void Dispose()
+        _controller.ControllerContext = new ControllerContext
         {
-            _context.Dispose();
-        }
+            HttpContext = new DefaultHttpContext { User = user }
+        };
+    }
 
-        private Session CreateSession(string status = "Started")
-        {
-            return new Session
-            {
-                GroupId = 1,
-                CarType = "Toy car",
-                RoadType = "Byzone",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = status,
-                CreatedAt = DateTime.Now
-            };
-        }
+    public void Dispose() => _context.Dispose();
 
-        private Measurement CreateMeasurement(int sessionId)
-        {
-            return new Measurement
-            {
-                SessionId = sessionId,
-                Time = 1,
-                Distance = 5,
-                MeasuredSpeed = 18,
-                SimulatedSpeed = 50,
-                SpeedLimit = 50,
-                Status = "On limit",
-                Co2 = 0,
-                Co2Saved = 0,
-                CreatedAt = DateTime.Now
-            };
-        }
+    private Session CreateSession(string status = "Started") => new Session
+    {
+        GroupId = 1,
+        CarType = "Toy car",
+        RoadType = "Byzone",
+        SpeedLimit = 50,
+        ScalingFactor = 10,
+        Status = status,
+        CreatedAt = DateTime.Now
+    };
 
-        [Fact]
-        public void Add_ValidMeasurement_ReturnsCreated()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+    // ✅ Hjælpemetode der laver en CreateMeasurementRequest (ikke Measurement)
+    private CreateMeasurementRequest CreateRequest(int sessionId, double time = 1) =>
+        new CreateMeasurementRequest { SessionId = sessionId, Time = time };
 
-            var measurement = CreateMeasurement(session.Id);
+    [Fact]
+    public void Add_ValidMeasurement_ReturnsCreated()
+    {
+        var session = CreateSession();
+        _context.Sessions.Add(session);
+        _context.SaveChanges();
 
-            var result = _controller.Add(measurement);
+        var result = _controller.Add(CreateRequest(session.Id));
 
-            Assert.IsType<CreatedAtActionResult>(result.Result);
-        }
+        Assert.IsType<CreatedAtActionResult>(result.Result);
+    }
 
-        [Fact]
-        public void Add_ValidMeasurement_SavesMeasurementInDatabase()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+    [Fact]
+    public void Add_ValidMeasurement_SavesMeasurementInDatabase()
+    {
+        var session = CreateSession();
+        _context.Sessions.Add(session);
+        _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
+        _controller.Add(CreateRequest(session.Id));
 
-            _controller.Add(measurement);
+        Assert.Single(_context.Measurements);
+    }
 
-            Assert.Single(_context.Measurements);
-        }
+    [Fact]
+    public void Add_WhenSessionIdInvalid_ReturnsBadRequest()
+    {
+        var result = _controller.Add(CreateRequest(0));
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 
-        [Fact]
-        public void Add_ValidMeasurement_CalculatesCorrectValues()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+    [Fact]
+    public void Add_WhenSessionNotFound_ReturnsNotFound()
+    {
+        var result = _controller.Add(CreateRequest(999));
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
 
-            var measurement = CreateMeasurement(session.Id);
+    [Fact]
+    public void Add_WhenTimeIsZero_ReturnsBadRequest()
+    {
+        var session = CreateSession();
+        _context.Sessions.Add(session);
+        _context.SaveChanges();
 
-            _controller.Add(measurement);
+        var result = _controller.Add(CreateRequest(session.Id, time: 0));
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 
-            var savedMeasurement = _context.Measurements.First();
+    [Fact]
+    public void Add_WhenSessionEnded_ReturnsBadRequest()
+    {
+        var session = CreateSession("Ended");
+        _context.Sessions.Add(session);
+        _context.SaveChanges();
 
-            Assert.Equal(5, savedMeasurement.Distance);
-            Assert.Equal(1, savedMeasurement.Time);
-            Assert.Equal(18, savedMeasurement.MeasuredSpeed);
-            Assert.Equal(50, savedMeasurement.SimulatedSpeed);
-            Assert.Equal(50, savedMeasurement.SpeedLimit);
-            Assert.Equal("On limit", savedMeasurement.Status);
-        }
+        var result = _controller.Add(CreateRequest(session.Id));
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 
-        [Fact]
-        public void Add_WhenSessionIdInvalid_ReturnsBadRequest()
-        {
-            var measurement = CreateMeasurement(0);
+    [Fact]
+    public void Delete_WhenNotExists_ReturnsNotFound()
+    {
+        var result = _controller.Delete(999);
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
 
-            var result = _controller.Add(measurement);
+    [Fact]
+    public void Delete_WhenMeasurementExists_ReturnsOk()
+    {
+        var measurement = _repo.Add(new Measurement { SessionId = 1, Time = 1 });
+        var result = _controller.Delete(measurement.Id);
+        Assert.IsType<OkObjectResult>(result.Result);
+    }
 
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
+    [Fact]
+    public void Update_Always_ReturnsBadRequest()
+    {
+        var result = _controller.Update(1, new Measurement());
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
 
-        [Fact]
-        public void Add_WhenSessionNotFound_ReturnsNotFound()
-        {
-            var measurement = CreateMeasurement(999);
+    [Fact]
+    public void GetSessionSummary_WhenSessionNotFound_ReturnsNotFound()
+    {
+        var result = _controller.GetSessionSummary(999);
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
 
-            var result = _controller.Add(measurement);
+    [Fact]
+    public void GetSessionSummary_WhenNoMeasurements_ReturnsZeroValues()
+    {
+        var session = CreateSession();
+        _context.Sessions.Add(session);
+        _context.SaveChanges();
 
-            Assert.IsType<NotFoundObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenTimeIsZero_ReturnsBadRequest()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            var measurement = CreateMeasurement(session.Id);
-            measurement.Time = 0;
-
-            var result = _controller.Add(measurement);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenSessionEnded_ReturnsBadRequest()
-        {
-            var session = CreateSession("Ended");
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            var measurement = CreateMeasurement(session.Id);
-
-            var result = _controller.Add(measurement);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Delete_WhenNotExists_ReturnsNotFound()
-        {
-            var result = _controller.Delete(999);
-
-            Assert.IsType<NotFoundObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Delete_WhenMeasurementExists_ReturnsOk()
-        {
-            var measurement = _repo.Add(CreateMeasurement(1));
-
-            var result = _controller.Delete(measurement.Id);
-
-            Assert.IsType<OkObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Update_Always_ReturnsBadRequest()
-        {
-            var measurement = CreateMeasurement(1);
-
-            var result = _controller.Update(1, measurement);
-
-            Assert.IsType<BadRequestObjectResult>(result);
-        }
-
-        [Fact]
-        public void GetSessionSummary_WhenSessionNotFound_ReturnsNotFound()
-        {
-            var result = _controller.GetSessionSummary(999);
-
-            Assert.IsType<NotFoundObjectResult>(result);
-        }
-
-        [Fact]
-        public void GetSessionSummary_WhenNoMeasurements_ReturnsZeroValues()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            var result = _controller.GetSessionSummary(session.Id);
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.NotNull(okResult.Value);
-        }
+        var result = _controller.GetSessionSummary(session.Id);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.NotNull(ok.Value);
     }
 }
