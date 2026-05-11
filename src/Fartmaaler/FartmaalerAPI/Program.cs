@@ -152,18 +152,28 @@ using (IServiceScope scope = app.Services.CreateScope())
     }
 
     // Seeder globale settings
-    if (!context.Settings.Any())
+    List<Settings> requiredSettings = new List<Settings>
     {
-        context.Settings.AddRange(
-            new Settings { Key = "TTS", Value = true },
-            new Settings { Key = "BipLyd", Value = true },
-            new Settings { Key = "FunFacts", Value = true },
-            new Settings { Key = "Leaderboard", Value = true },
-            new Settings { Key = "VisuelFeedback", Value = true }
-        );
+        new Settings { Key = "TTS", Value = true },
+        new Settings { Key = "BipLyd", Value = true },
+        new Settings { Key = "FunFacts", Value = true },
+        new Settings { Key = "TTSFunFact", Value = true },
+        new Settings { Key = "Leaderboard", Value = true },
+        new Settings { Key = "VisuelFeedback", Value = true }
+    };
 
-        context.SaveChanges();
+    foreach (Settings requiredSetting in requiredSettings)
+    {
+        bool settingExists = context.Settings
+            .Any(setting => setting.Key.ToLower() == requiredSetting.Key.ToLower());
+
+        if (!settingExists)
+        {
+            context.Settings.Add(requiredSetting);
+        }
     }
+
+    context.SaveChanges();
 }
 
 // Bruger Swagger i development
