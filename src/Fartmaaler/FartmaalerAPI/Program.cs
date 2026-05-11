@@ -31,7 +31,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Tilføjer controllers og Swagger
+// Tilfï¿½jer controllers og Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -62,13 +62,13 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Tilføjer repositories
+// Tilfï¿½jer repositories
 builder.Services.AddScoped<IRepository<Group>, GroupsRepo>();
 builder.Services.AddScoped<IRepository<Session>, SessionsRepo>();
 builder.Services.AddScoped<IRepository<Measurement>, MeasurementsRepo>();
 builder.Services.AddScoped<MeasurementsRepo>();
 
-// Tilføjer services
+// Tilfï¿½jer services
 builder.Services.AddScoped<MeasurementService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<LeaderboardService>();
@@ -158,6 +158,18 @@ using (var scope = app.Services.CreateScope())
             IsEnabled = false
         });
 
+        context.SaveChanges();
+    }
+
+    if (!context.Settings.Any())
+    {
+        context.Settings.AddRange(
+            new FartmaalerAPI.Models.Settings { Key = "TTS", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "BipLyd", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "FunFacts", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "Leaderboard", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "VisuelFeedback", Value = true }
+        );
         context.SaveChanges();
     }
 }

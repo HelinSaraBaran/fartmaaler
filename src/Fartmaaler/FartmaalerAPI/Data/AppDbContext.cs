@@ -34,5 +34,8 @@ namespace FartmaalerAPI.Data
 
         // LeaderboardSettings bliver til en tabel i databasen
         public DbSet<LeaderboardSetting> LeaderboardSettings { get; set; }
+        // Settings bliver til en tabel
+        // Indeholder Settings objekter
+        public DbSet<Settings> Settings { get; set; }
     }
 }
