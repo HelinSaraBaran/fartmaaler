@@ -40,16 +40,55 @@ namespace FartmaalerAPI.Services
             };
         }
 
+        // Starter en ny session og låser gruppen
+        public Session? StartSession(int groupId, string carType, string roadType)
+        {
+            Group? group = _context.Groups.FirstOrDefault(group => group.Id == groupId);
+
+            if (group == null)
+            {
+                return null;
+            }
+
+            if (group.IsLocked == true)
+            {
+                return null;
+            }
+
+            Session session = new Session
+            {
+                GroupId = groupId,
+                CarType = carType,
+                RoadType = roadType,
+                SpeedLimit = GetSpeedLimit(roadType),
+                ScalingFactor = GetScalingFactor(roadType),
+                Status = "Active",
+                CreatedAt = DateTime.Now,
+                EndedAt = null
+            };
+
+            group.IsLocked = true;
+
+            _context.Sessions.Add(session);
+            _context.SaveChanges();
+
+            return session;
+        }
+
         // Afslutter en session og frigiver gruppen igen
         public Session? EndSession(int id)
         {
             Session? session = _context.Sessions.FirstOrDefault(session => session.Id == id);
 
             if (session == null)
+            {
                 return null;
+            }
 
             if (session.Status?.ToLower() == "ended")
+            {
                 return session;
+            }
 
             session.Status = "Ended";
             session.EndedAt = DateTime.Now;
@@ -79,7 +118,9 @@ namespace FartmaalerAPI.Services
             Group? group = _context.Groups.FirstOrDefault(group => group.Id == groupId);
 
             if (group == null)
+            {
                 return null;
+            }
 
             List<Session> sessions = _context.Sessions
                 .Where(session => session.GroupId == groupId)

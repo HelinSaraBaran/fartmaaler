@@ -1,10 +1,10 @@
 ﻿using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
 using FartmaalerAPI.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using FartmaalerAPI.DTOs;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FartmaalerAPI.Controllers
 {
@@ -16,7 +16,7 @@ namespace FartmaalerAPI.Controllers
         private readonly AppDbContext _context;
         private readonly SessionService _sessionService;
 
-        // Constructor modtager repository context og service
+        // Constructor modtager repository, context og service
         public SessionsController(
             IRepository<Session> repo,
             AppDbContext context,
@@ -41,7 +41,9 @@ namespace FartmaalerAPI.Controllers
             Session? session = _repo.GetById(id);
 
             if (session == null)
+            {
                 return NotFound(new { message = "Session blev ikke fundet" });
+            }
 
             return Ok(session);
         }
@@ -52,64 +54,73 @@ namespace FartmaalerAPI.Controllers
         {
             // Tjekker om group id er gyldigt
             if (request.GroupId <= 0)
+            {
                 return BadRequest(new { message = "GroupId er påkrævet" });
+            }
 
             // Tjekker om biltype er udfyldt
             if (string.IsNullOrWhiteSpace(request.CarType))
+            {
                 return BadRequest(new { message = "Biltype er påkrævet" });
+            }
 
             // Tjekker om vejtype er udfyldt
             if (string.IsNullOrWhiteSpace(request.RoadType))
+            {
                 return BadRequest(new { message = "Vejtype er påkrævet" });
+            }
+
+            string roadType = request.RoadType.Trim().ToLower();
 
             // Tjekker om vejtypen er gyldig
-            if (request.RoadType.ToLower() != "byzone 50" &&
-                request.RoadType.ToLower() != "landevej 80" &&
-                request.RoadType.ToLower() != "motorvej 130")
+            if (roadType != "byzone 50" &&
+                roadType != "landevej 80" &&
+                roadType != "motorvej 130")
+            {
                 return BadRequest(new { message = "Vejtypen er ikke gyldig" });
+            }
 
-            // Finder gruppen i databasen
+            // Finder gruppen først, så vi kan give en præcis fejlbesked
             Group? group = _context.Groups
                 .FirstOrDefault(group => group.Id == request.GroupId);
 
             if (group == null)
-                return NotFound(new { message = "Gruppen blev ikke fundet" });
-
-            // Tjekker om gruppen allerede har en aktiv session
-            if (group.IsLocked)
-                return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
-
-            // Opretter session objekt
-            Session session = new Session
             {
-                GroupId = request.GroupId,
-                CarType = request.CarType,
-                RoadType = request.RoadType.ToLower(),
-                SpeedLimit = _sessionService.GetSpeedLimit(request.RoadType),
-                ScalingFactor = _sessionService.GetScalingFactor(request.RoadType),
-                Status = "Started",
-                CreatedAt = DateTime.Now
-            };
+                return NotFound(new { message = "Gruppen blev ikke fundet" });
+            }
 
-            // Låser gruppen mens sessionen kører
-            group.IsLocked = true;
+            if (group.IsLocked)
+            {
+                return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
+            }
 
-            Session created = _repo.Add(session);
+            // Service opretter sessionen og låser gruppen
+            Session? createdSession = _sessionService.StartSession(
+                request.GroupId,
+                request.CarType.Trim(),
+                roadType);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            if (createdSession == null)
+            {
+                return BadRequest(new { message = "Session kunne ikke startes" });
+            }
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = createdSession.Id },
+                createdSession);
         }
 
         // Afslutter en session
         [HttpPut("{id}/end")]
         public ActionResult<Session> EndSession(int id)
         {
-            Session? existing = _context.Sessions
-                .FirstOrDefault(session => session.Id == id);
-
-            if (existing == null)
-                return NotFound(new { message = "Session blev ikke fundet" });
-
             Session? endedSession = _sessionService.EndSession(id);
+
+            if (endedSession == null)
+            {
+                return NotFound(new { message = "Session blev ikke fundet" });
+            }
 
             return Ok(endedSession);
         }
@@ -135,7 +146,9 @@ namespace FartmaalerAPI.Controllers
                 sortDirection);
 
             if (history == null)
+            {
                 return NotFound(new { message = "Gruppen blev ikke fundet" });
+            }
 
             return Ok(history);
         }
@@ -148,7 +161,9 @@ namespace FartmaalerAPI.Controllers
             Session? updated = _repo.Update(id, session);
 
             if (updated == null)
+            {
                 return NotFound(new { message = "Session blev ikke fundet" });
+            }
 
             return Ok(updated);
         }
@@ -158,10 +173,28 @@ namespace FartmaalerAPI.Controllers
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
         {
+            Session? session = _context.Sessions
+                .FirstOrDefault(session => session.Id == id);
+
+            if (session == null)
+            {
+                return NotFound(new { message = "Session blev ikke fundet" });
+            }
+
+            Group? group = _context.Groups
+                .FirstOrDefault(group => group.Id == session.GroupId);
+
+            if (group != null)
+            {
+                group.IsLocked = false;
+            }
+
             Session? deleted = _repo.Delete(id);
 
             if (deleted == null)
+            {
                 return NotFound(new { message = "Session blev ikke fundet" });
+            }
 
             return Ok(deleted);
         }
@@ -206,7 +239,9 @@ namespace FartmaalerAPI.Controllers
                 List<Measurement> measurements = _context.Measurements.ToList();
 
                 if (!measurements.Any())
+                {
                     return Ok(new { message = "Ingen data endnu", count = 0 });
+                }
 
                 return Ok(new
                 {

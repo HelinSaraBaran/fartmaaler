@@ -56,7 +56,7 @@ namespace TDDTest
         }
 
         // Opretter test session
-        private Session CreateSession(int groupId, string status = "Started")
+        private Session CreateSession(int groupId, string status = "Active")
         {
             return new Session
             {
@@ -194,16 +194,31 @@ namespace TDDTest
                 _context.Sessions.First();
 
             Assert.Equal(group.Id, savedSession.GroupId);
-
             Assert.Equal("Toy car", savedSession.CarType);
-
             Assert.Equal("byzone 50", savedSession.RoadType);
-
             Assert.Equal(50, savedSession.SpeedLimit);
-
             Assert.Equal(10, savedSession.ScalingFactor);
+            Assert.Equal("Active", savedSession.Status);
+            Assert.Null(savedSession.EndedAt);
+        }
 
-            Assert.Equal("Started", savedSession.Status);
+        [Fact]
+        public void Add_ValidSession_LocksGroup()
+        {
+            Group group = CreateGroup();
+
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            StartSessionRequest request =
+                CreateStartSessionRequest(group.Id);
+
+            _controller.Add(request);
+
+            Group savedGroup =
+                _context.Groups.First();
+
+            Assert.True(savedGroup.IsLocked);
         }
 
         [Fact]
@@ -243,6 +258,48 @@ namespace TDDTest
                 GroupId = group.Id,
                 CarType = "Toy car",
                 RoadType = "Forkert vejtype"
+            };
+
+            ActionResult<Session> result =
+                _controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        public void Add_WhenCarTypeIsEmpty_ReturnsBadRequest()
+        {
+            Group group = CreateGroup();
+
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            StartSessionRequest request = new StartSessionRequest
+            {
+                GroupId = group.Id,
+                CarType = "",
+                RoadType = "byzone 50"
+            };
+
+            ActionResult<Session> result =
+                _controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        public void Add_WhenRoadTypeIsEmpty_ReturnsBadRequest()
+        {
+            Group group = CreateGroup();
+
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            StartSessionRequest request = new StartSessionRequest
+            {
+                GroupId = group.Id,
+                CarType = "Toy car",
+                RoadType = ""
             };
 
             ActionResult<Session> result =
@@ -344,6 +401,8 @@ namespace TDDTest
         {
             Group group = CreateGroup();
 
+            group.IsLocked = true;
+
             _context.Groups.Add(group);
             _context.SaveChanges();
 
@@ -361,8 +420,30 @@ namespace TDDTest
                 _context.Sessions.First();
 
             Assert.Equal("Ended", updatedSession.Status);
-
             Assert.NotNull(updatedSession.EndedAt);
+        }
+
+        [Fact]
+        public void EndSession_WhenSessionExists_UnlocksGroup()
+        {
+            Group group = CreateGroup();
+
+            group.IsLocked = true;
+
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            Session session = CreateSession(group.Id);
+
+            _context.Sessions.Add(session);
+            _context.SaveChanges();
+
+            _controller.EndSession(session.Id);
+
+            Group updatedGroup =
+                _context.Groups.First();
+
+            Assert.False(updatedGroup.IsLocked);
         }
 
         [Fact]

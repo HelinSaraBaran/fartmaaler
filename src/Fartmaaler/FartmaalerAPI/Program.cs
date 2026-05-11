@@ -106,6 +106,27 @@ using (IServiceScope scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 
+    // Seeder standard grupper
+    if (!context.Groups.Any())
+    {
+        context.Groups.AddRange(
+            new Group
+            {
+                Name = "Gruppe 1",
+                School = "Køge Skole",
+                IsLocked = false
+            },
+            new Group
+            {
+                Name = "Gruppe 2",
+                School = "Køge Skole",
+                IsLocked = false
+            }
+        );
+
+        context.SaveChanges();
+    }
+
     // Seeder mock skole leaderboard data
     if (!context.SchoolLeaderboardMocks.Any())
     {
