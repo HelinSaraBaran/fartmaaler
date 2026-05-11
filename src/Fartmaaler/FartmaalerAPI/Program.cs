@@ -63,6 +63,18 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// CORS policy til frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
 // Tilføjer repositories
 builder.Services.AddScoped<IRepository<Group>, GroupsRepo>();
 builder.Services.AddScoped<IRepository<Session>, SessionsRepo>();
@@ -176,14 +188,14 @@ using (IServiceScope scope = app.Services.CreateScope())
     context.SaveChanges();
 }
 
-// Bruger Swagger i development
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Bruger Swagger også på Azure
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+
+// CORS skal ligge før authentication
+app.UseCors("AllowFrontend");
 
 // Bruger authentication og authorization
 app.UseAuthentication();
