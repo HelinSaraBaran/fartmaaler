@@ -1,5 +1,6 @@
 ﻿using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using FartmaalerAPI.Services;
@@ -65,16 +66,25 @@ namespace TDDTest
             };
         }
 
+        private CreateMeasurementRequest CreateMeasurementRequest(int sessionId, double time)
+        {
+            return new CreateMeasurementRequest
+            {
+                SessionId = sessionId,
+                Time = time
+            };
+        }
+
         [Fact]
         public void Add_ValidMeasurement_ReturnsCreated()
         {
-            var session = CreateSession();
+            Session session = CreateSession();
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
+            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
 
-            var result = _controller.Add(measurement);
+            ActionResult<Measurement> result = _controller.Add(request);
 
             Assert.IsType<CreatedAtActionResult>(result.Result);
         }
@@ -82,13 +92,13 @@ namespace TDDTest
         [Fact]
         public void Add_ValidMeasurement_SavesMeasurementInDatabase()
         {
-            var session = CreateSession();
+            Session session = CreateSession();
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
+            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
 
-            _controller.Add(measurement);
+            _controller.Add(request);
 
             Assert.Single(_context.Measurements);
         }
@@ -96,15 +106,15 @@ namespace TDDTest
         [Fact]
         public void Add_ValidMeasurement_CalculatesCorrectValues()
         {
-            var session = CreateSession();
+            Session session = CreateSession();
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
+            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
 
-            _controller.Add(measurement);
+            _controller.Add(request);
 
-            var savedMeasurement = _context.Measurements.First();
+            Measurement savedMeasurement = _context.Measurements.First();
 
             Assert.Equal(5, savedMeasurement.Distance);
             Assert.Equal(1, savedMeasurement.Time);
@@ -117,9 +127,9 @@ namespace TDDTest
         [Fact]
         public void Add_WhenSessionIdInvalid_ReturnsBadRequest()
         {
-            var measurement = CreateMeasurement(0);
+            CreateMeasurementRequest request = CreateMeasurementRequest(0, 1);
 
-            var result = _controller.Add(measurement);
+            ActionResult<Measurement> result = _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -127,9 +137,9 @@ namespace TDDTest
         [Fact]
         public void Add_WhenSessionNotFound_ReturnsNotFound()
         {
-            var measurement = CreateMeasurement(999);
+            CreateMeasurementRequest request = CreateMeasurementRequest(999, 1);
 
-            var result = _controller.Add(measurement);
+            ActionResult<Measurement> result = _controller.Add(request);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -137,14 +147,13 @@ namespace TDDTest
         [Fact]
         public void Add_WhenTimeIsZero_ReturnsBadRequest()
         {
-            var session = CreateSession();
+            Session session = CreateSession();
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
-            measurement.Time = 0;
+            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 0);
 
-            var result = _controller.Add(measurement);
+            ActionResult<Measurement> result = _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -152,13 +161,13 @@ namespace TDDTest
         [Fact]
         public void Add_WhenSessionEnded_ReturnsBadRequest()
         {
-            var session = CreateSession("Ended");
+            Session session = CreateSession("Ended");
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var measurement = CreateMeasurement(session.Id);
+            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
 
-            var result = _controller.Add(measurement);
+            ActionResult<Measurement> result = _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -166,7 +175,7 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenNotExists_ReturnsNotFound()
         {
-            var result = _controller.Delete(999);
+            ActionResult<Measurement> result = _controller.Delete(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -174,9 +183,9 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenMeasurementExists_ReturnsOk()
         {
-            var measurement = _repo.Add(CreateMeasurement(1));
+            Measurement measurement = _repo.Add(CreateMeasurement(1));
 
-            var result = _controller.Delete(measurement.Id);
+            ActionResult<Measurement> result = _controller.Delete(measurement.Id);
 
             Assert.IsType<OkObjectResult>(result.Result);
         }
@@ -184,9 +193,9 @@ namespace TDDTest
         [Fact]
         public void Update_Always_ReturnsBadRequest()
         {
-            var measurement = CreateMeasurement(1);
+            Measurement measurement = CreateMeasurement(1);
 
-            var result = _controller.Update(1, measurement);
+            IActionResult result = _controller.Update(1, measurement);
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
@@ -194,7 +203,7 @@ namespace TDDTest
         [Fact]
         public void GetSessionSummary_WhenSessionNotFound_ReturnsNotFound()
         {
-            var result = _controller.GetSessionSummary(999);
+            IActionResult result = _controller.GetSessionSummary(999);
 
             Assert.IsType<NotFoundObjectResult>(result);
         }
@@ -202,13 +211,13 @@ namespace TDDTest
         [Fact]
         public void GetSessionSummary_WhenNoMeasurements_ReturnsZeroValues()
         {
-            var session = CreateSession();
+            Session session = CreateSession();
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            var result = _controller.GetSessionSummary(session.Id);
+            IActionResult result = _controller.GetSessionSummary(session.Id);
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result);
             Assert.NotNull(okResult.Value);
         }
     }

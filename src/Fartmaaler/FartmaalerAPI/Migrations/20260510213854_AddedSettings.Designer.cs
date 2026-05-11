@@ -4,6 +4,7 @@ using FartmaalerAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FartmaalerAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510213854_AddedSettings")]
+    partial class AddedSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,22 +47,6 @@ namespace FartmaalerAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Groups");
-                });
-
-            modelBuilder.Entity("FartmaalerAPI.Models.LeaderboardSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("LeaderboardSettings");
                 });
 
             modelBuilder.Entity("FartmaalerAPI.Models.Measurement", b =>
@@ -106,36 +93,6 @@ namespace FartmaalerAPI.Migrations
                     b.HasIndex("SessionId");
 
                     b.ToTable("Measurements");
-                });
-
-            modelBuilder.Entity("FartmaalerAPI.Models.SchoolLeaderboardMock", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("AverageCo2")
-                        .HasColumnType("float");
-
-                    b.Property<double>("AverageScore")
-                        .HasColumnType("float");
-
-                    b.Property<int>("MeasurementCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RoadType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SchoolName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("SchoolLeaderboardMocks");
                 });
 
             modelBuilder.Entity("FartmaalerAPI.Models.Session", b =>

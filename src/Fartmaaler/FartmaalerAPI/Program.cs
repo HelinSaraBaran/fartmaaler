@@ -10,11 +10,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// Database connection
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// JWT Authentication
+// JWT authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -31,6 +31,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Tilf�jer controllers og Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -44,6 +45,7 @@ builder.Services.AddSwaggerGen(options =>
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Description = "Indtast dit JWT token"
     });
+
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
     {
         {
@@ -60,31 +62,119 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// Tilf�jer repositories
 builder.Services.AddScoped<IRepository<Group>, GroupsRepo>();
 builder.Services.AddScoped<IRepository<Session>, SessionsRepo>();
 builder.Services.AddScoped<IRepository<Measurement>, MeasurementsRepo>();
 builder.Services.AddScoped<MeasurementsRepo>();
+
+// Tilf�jer services
 builder.Services.AddScoped<MeasurementService>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<LeaderboardService>();
+
 var app = builder.Build();
 
-// Seed admin bruger
+// Seeder standard data
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+    // Seeder admin bruger
     if (!context.Users.Any())
     {
-        context.Users.Add(new FartmaalerAPI.Models.User
+        context.Users.Add(new User
         {
             Username = "admin",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
             Role = "admin"
         });
+
+        context.SaveChanges();
+    }
+
+    // Seeder mock skole leaderboard data
+    if (!context.SchoolLeaderboardMocks.Any())
+    {
+        context.SchoolLeaderboardMocks.AddRange(
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Roskilde Skole",
+                RoadType = "byzone 50",
+                AverageScore = 8.4,
+                AverageCo2 = 5.2,
+                MeasurementCount = 42
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Holbaek Skole",
+                RoadType = "byzone 50",
+                AverageScore = 10.1,
+                AverageCo2 = 6.0,
+                MeasurementCount = 38
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Roskilde Skole",
+                RoadType = "landevej 80",
+                AverageScore = 12.5,
+                AverageCo2 = 8.8,
+                MeasurementCount = 35
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Holbaek Skole",
+                RoadType = "landevej 80",
+                AverageScore = 14.3,
+                AverageCo2 = 9.5,
+                MeasurementCount = 31
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Roskilde Skole",
+                RoadType = "motorvej 130",
+                AverageScore = 18.3,
+                AverageCo2 = 14.1,
+                MeasurementCount = 29
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Holbaek Skole",
+                RoadType = "motorvej 130",
+                AverageScore = 20.6,
+                AverageCo2 = 15.7,
+                MeasurementCount = 25
+            }
+        );
+
+        context.SaveChanges();
+    }
+
+    // Seeder leaderboard setting
+    if (!context.LeaderboardSettings.Any())
+    {
+        context.LeaderboardSettings.Add(new LeaderboardSetting
+        {
+            IsEnabled = false
+        });
+
+        context.SaveChanges();
+    }
+
+    if (!context.Settings.Any())
+    {
+        context.Settings.AddRange(
+            new FartmaalerAPI.Models.Settings { Key = "TTS", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "BipLyd", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "FunFacts", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "Leaderboard", Value = true },
+            new FartmaalerAPI.Models.Settings { Key = "VisuelFeedback", Value = true }
+        );
         context.SaveChanges();
     }
 }
 
+// Bruger Swagger i development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -92,7 +182,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Bruger authentication og authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();

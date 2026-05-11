@@ -26,5 +26,16 @@ namespace FartmaalerAPI.Data
         // Measurements bliver til en tabel
         // Indeholder selve målingerne (hastighed, tid osv.)
         public DbSet<Measurement> Measurements { get; set; }
+
+
+        // SchoolLeaderboardMocks bliver til en tabel
+        // Bruges til hardcoded skoledata i leaderboard
+        public DbSet<SchoolLeaderboardMock> SchoolLeaderboardMocks { get; set; }
+
+        // LeaderboardSettings bliver til en tabel i databasen
+        public DbSet<LeaderboardSetting> LeaderboardSettings { get; set; }
+        // Settings bliver til en tabel
+        // Indeholder Settings objekter
+        public DbSet<Settings> Settings { get; set; }
     }
 }
