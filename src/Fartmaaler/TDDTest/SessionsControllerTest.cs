@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
 using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using FartmaalerAPI.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -22,7 +24,7 @@ namespace TDDTest
 
         public SessionsControllerTest()
         {
-            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
@@ -30,62 +32,68 @@ namespace TDDTest
             _repo = new SessionsRepo(_context);
             _sessionService = new SessionService(_context);
             _controller = new SessionsController(_repo, _context, _sessionService);
-        }
 
-        public void Dispose()
-        {
-            _context.Dispose();
-        }
-
-        private Group CreateGroup()
-        {
-            return new Group
+            // Admin-rolle til Delete og Update
+            var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
             {
-                Name = "Test group",
-                School = "Test school",
-                IsLocked = false
+                new Claim(ClaimTypes.Role, "admin")
+            }, "TestAuth"));
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = user }
             };
         }
 
-        private Session CreateSession(int groupId, string status = "Started")
-        {
-            return new Session
-            {
-                GroupId = groupId,
-                CarType = "Toy car",
-                RoadType = "byzone 50",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = status,
-                CreatedAt = DateTime.Now
-            };
-        }
+        public void Dispose() => _context.Dispose();
 
-        private StartSessionRequest CreateStartSessionRequest(int groupId)
+        // ── Hjælpemetoder ──────────────────────────────────────────
+
+        private Group CreateGroup(bool isLocked = false) => new Group
         {
-            return new StartSessionRequest
+            Name = "Test group",
+            School = "Test school",
+            IsLocked = isLocked
+        };
+
+        private StartSessionRequest CreateRequest(
+            int groupId,
+            string roadType = "Byzone 50",
+            string carType = "Toy car") =>
+            new StartSessionRequest
             {
                 GroupId = groupId,
-                CarType = "Toy car",
-                RoadType = "byzone 50"
+                CarType = carType,
+                RoadType = roadType
             };
-        }
+
+        private Session CreateSession(int groupId, string status = "Started") => new Session
+        {
+            GroupId = groupId,
+            CarType = "Toy car",
+            RoadType = "byzone 50",
+            SpeedLimit = 50,
+            ScalingFactor = 10,
+            Status = status,
+            CreatedAt = DateTime.Now
+        };
+
+        // ── GetAll ─────────────────────────────────────────────────
 
         [Fact]
         public void GetAll_WhenNoSessionsExist_ReturnsOkWithEmptyList()
         {
-            ActionResult<IEnumerable<Session>> result = _controller.GetAll();
+            var result = _controller.GetAll();
 
-            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
-            IEnumerable<Session> sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
-
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(ok.Value);
             Assert.Empty(sessions);
         }
 
         [Fact]
-        public void GetAll_WhenSessionsExist_ReturnsOkWithAllSessions()
+        public void GetAll_WhenSessionsExist_ReturnsAllSessions()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
@@ -94,218 +102,251 @@ namespace TDDTest
                 CreateSession(group.Id),
                 CreateSession(group.Id)
             );
-
             _context.SaveChanges();
 
-            ActionResult<IEnumerable<Session>> result = _controller.GetAll();
+            var result = _controller.GetAll();
 
-            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
-            IEnumerable<Session> sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
-
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var sessions = Assert.IsAssignableFrom<IEnumerable<Session>>(ok.Value);
             Assert.Equal(3, sessions.Count());
         }
 
+        // ── GetById ────────────────────────────────────────────────
+
         [Fact]
-        public void GetById_WhenSessionExists_ReturnsOkWithSession()
+        public void GetById_WhenSessionExists_ReturnsOk()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            Session session = CreateSession(group.Id);
+            var session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            ActionResult<Session> result = _controller.GetById(session.Id);
+            var result = _controller.GetById(session.Id);
 
-            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
-            Session returnedSession = Assert.IsType<Session>(okResult.Value);
-
-            Assert.Equal(session.Id, returnedSession.Id);
+            var ok = Assert.IsType<OkObjectResult>(result.Result);
+            var returned = Assert.IsType<Session>(ok.Value);
+            Assert.Equal(session.Id, returned.Id);
         }
 
         [Fact]
         public void GetById_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            ActionResult<Session> result = _controller.GetById(999);
-
+            var result = _controller.GetById(999);
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
 
+        // ── Add ────────────────────────────────────────────────────
+
         [Fact]
-        public void Add_ValidSession_ReturnsCreated()
+        public void Add_ValidRequest_ReturnsCreated()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            StartSessionRequest request = CreateStartSessionRequest(group.Id);
-
-            ActionResult<Session> result = _controller.Add(request);
+            var result = _controller.Add(CreateRequest(group.Id));
 
             Assert.IsType<CreatedAtActionResult>(result.Result);
             Assert.Single(_context.Sessions);
         }
 
         [Fact]
-        public void Add_ValidSession_SavesCorrectProperties()
+        public void Add_ValidRequest_SavesCorrectProperties()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            StartSessionRequest request = CreateStartSessionRequest(group.Id);
+            _controller.Add(CreateRequest(group.Id, "Landevej 80", "Bus"));
 
-            _controller.Add(request);
-
-            Session savedSession = _context.Sessions.First();
-
-            Assert.Equal(group.Id, savedSession.GroupId);
-            Assert.Equal("Toy car", savedSession.CarType);
-            Assert.Equal("byzone 50", savedSession.RoadType);
-            Assert.Equal(50, savedSession.SpeedLimit);
-            Assert.Equal(10, savedSession.ScalingFactor);
-            Assert.Equal("Started", savedSession.Status);
+            var saved = _context.Sessions.First();
+            Assert.Equal(group.Id, saved.GroupId);
+            Assert.Equal("Bus", saved.CarType);
+            Assert.Equal("Started", saved.Status);
         }
 
         [Fact]
-        public void Add_WhenGroupIdInvalid_ReturnsBadRequest()
+        public void Add_ValidRequest_LocksGroup()
         {
-            StartSessionRequest request = CreateStartSessionRequest(0);
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
 
-            ActionResult<Session> result = _controller.Add(request);
+            _controller.Add(CreateRequest(group.Id));
 
+            var updatedGroup = _context.Groups.First();
+            Assert.True(updatedGroup.IsLocked);
+        }
+
+        [Fact]
+        public void Add_WhenGroupIdIsZero_ReturnsBadRequest()
+        {
+            var result = _controller.Add(CreateRequest(0));
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        public void Add_WhenCarTypeIsEmpty_ReturnsBadRequest()
+        {
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            var result = _controller.Add(CreateRequest(group.Id, carType: ""));
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        public void Add_WhenRoadTypeIsEmpty_ReturnsBadRequest()
+        {
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            var result = _controller.Add(CreateRequest(group.Id, roadType: ""));
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Theory]
+        [InlineData("Byzone 50")]
+        [InlineData("Landevej 80")]
+        [InlineData("Motorvej 130")]
+        public void Add_WithValidRoadTypes_ReturnsCreated(string roadType)
+        {
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            var result = _controller.Add(CreateRequest(group.Id, roadType));
+            Assert.IsType<CreatedAtActionResult>(result.Result);
+        }
+
+        [Fact]
+        public void Add_WhenRoadTypeIsInvalid_ReturnsBadRequest()
+        {
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
+
+            var result = _controller.Add(CreateRequest(group.Id, roadType: "Forkert vej"));
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
 
         [Fact]
         public void Add_WhenGroupDoesNotExist_ReturnsNotFound()
         {
-            StartSessionRequest request = CreateStartSessionRequest(999);
-
-            ActionResult<Session> result = _controller.Add(request);
-
+            var result = _controller.Add(CreateRequest(999));
             Assert.IsType<NotFoundObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenRoadTypeInvalid_ReturnsCreatedBecauseServiceUsesDefault()
-        {
-            Group group = CreateGroup();
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request = new StartSessionRequest
-            {
-                GroupId = group.Id,
-                CarType = "Toy car",
-                RoadType = "Forkert vejtype"
-            };
-
-            ActionResult<Session> result = _controller.Add(request);
-
-            Assert.IsType<CreatedAtActionResult>(result.Result);
         }
 
         [Fact]
         public void Add_WhenGroupIsLocked_ReturnsBadRequest()
         {
-            Group group = CreateGroup();
-            group.IsLocked = true;
-
+            var group = CreateGroup(isLocked: true);
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            StartSessionRequest request = CreateStartSessionRequest(group.Id);
-
-            ActionResult<Session> result = _controller.Add(request);
-
+            var result = _controller.Add(CreateRequest(group.Id));
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
 
+        // ── EndSession ─────────────────────────────────────────────
+
         [Fact]
-        public void Delete_WhenSessionExists_ReturnsOk()
+        public void EndSession_WhenSessionExists_ReturnsOk()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            Session session = CreateSession(group.Id);
+            var session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            ActionResult<Session> result = _controller.Delete(session.Id);
-
+            var result = _controller.EndSession(session.Id);
             Assert.IsType<OkObjectResult>(result.Result);
         }
 
         [Fact]
-        public void Delete_WhenSessionDoesNotExist_ReturnsNotFound()
+        public void EndSession_WhenSessionExists_SetsStatusToEnded()
         {
-            ActionResult<Session> result = _controller.Delete(999);
+            var group = CreateGroup();
+            _context.Groups.Add(group);
+            _context.SaveChanges();
 
+            var session = CreateSession(group.Id);
+            _context.Sessions.Add(session);
+            _context.SaveChanges();
+
+            _controller.EndSession(session.Id);
+
+            var updated = _context.Sessions.First();
+            Assert.Equal("Ended", updated.Status);
+            Assert.NotNull(updated.EndedAt);
+        }
+
+        [Fact]
+        public void EndSession_WhenSessionDoesNotExist_ReturnsNotFound()
+        {
+            var result = _controller.EndSession(999);
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
+
+        // ── Update ─────────────────────────────────────────────────
 
         [Fact]
         public void Update_WhenSessionExists_ReturnsOk()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            Session session = CreateSession(group.Id);
+            var session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            Session updatedSession = CreateSession(group.Id);
-            updatedSession.CarType = "Updated car";
+            var updated = CreateSession(group.Id);
+            updated.CarType = "Updated car";
 
-            ActionResult<Session> result = _controller.Update(session.Id, updatedSession);
-
+            var result = _controller.Update(session.Id, updated);
             Assert.IsType<OkObjectResult>(result.Result);
         }
 
         [Fact]
         public void Update_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            Session updatedSession = CreateSession(group.Id);
-
-            ActionResult<Session> result = _controller.Update(999, updatedSession);
-
+            var result = _controller.Update(999, CreateSession(group.Id));
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
 
+        // ── Delete ─────────────────────────────────────────────────
+
         [Fact]
-        public void EndSession_WhenSessionExists_ReturnsOkAndChangesStatus()
+        public void Delete_WhenSessionExists_ReturnsOk()
         {
-            Group group = CreateGroup();
+            var group = CreateGroup();
             _context.Groups.Add(group);
             _context.SaveChanges();
 
-            Session session = CreateSession(group.Id);
+            var session = CreateSession(group.Id);
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            ActionResult<Session> result = _controller.EndSession(session.Id);
-
+            var result = _controller.Delete(session.Id);
             Assert.IsType<OkObjectResult>(result.Result);
-
-            Session updatedSession = _context.Sessions.First();
-
-            Assert.Equal("Ended", updatedSession.Status);
-            Assert.NotNull(updatedSession.EndedAt);
         }
 
         [Fact]
-        public void EndSession_WhenSessionDoesNotExist_ReturnsNotFound()
+        public void Delete_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            ActionResult<Session> result = _controller.EndSession(999);
-
+            var result = _controller.Delete(999);
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
     }
