@@ -17,8 +17,6 @@ namespace TDDTest
         private readonly LeaderboardController _controller;
 
         // Constructoren kører før hver test
-        // Her laver vi en falsk database i hukommelsen
-        // Så tester vi uden at bruge den rigtige database
         public LeaderboardControllerTest()
         {
             DbContextOptions<AppDbContext> options =
@@ -27,25 +25,17 @@ namespace TDDTest
                 .Options;
 
             _context = new AppDbContext(options);
-
-            // Servicen får den falske database
-            // Det gør at controlleren kan testes realistisk
             _service = new LeaderboardService(_context);
-
-            // Controlleren får servicen
-            // Så testen rammer samme flow som API'et
             _controller = new LeaderboardController(_service);
         }
 
-        // Dispose kører efter hver test
-        // Den rydder databasen op fra hukommelsen
+        // Rydder den falske database efter hver test
         public void Dispose()
         {
             _context.Dispose();
         }
 
-        // Hjælpemetode der opretter en testgruppe
-        // Gruppen bruges til klasse leaderboard
+        // Opretter en testgruppe
         private Group CreateGroup()
         {
             return new Group
@@ -56,8 +46,7 @@ namespace TDDTest
             };
         }
 
-        // Hjælpemetode der opretter en test session
-        // Status er Ended fordi leaderboard kun bruger afsluttede sessions
+        // Opretter en afsluttet test session
         private Session CreateSession(int groupId, string status = "Ended")
         {
             return new Session
@@ -73,8 +62,7 @@ namespace TDDTest
             };
         }
 
-        // Hjælpemetode der opretter en test måling
-        // Målingen bruges til at beregne score og CO2
+        // Opretter en test måling
         private Measurement CreateMeasurement(int sessionId)
         {
             return new Measurement
@@ -92,36 +80,38 @@ namespace TDDTest
             };
         }
 
+        // Opretter leaderboard setting
+        private void CreateLeaderboardSetting(bool value)
+        {
+            Settings setting = new Settings
+            {
+                Key = "Leaderboard",
+                Value = value
+            };
+
+            _context.Settings.Add(setting);
+            _context.SaveChanges();
+        }
+
         [Fact]
         public void GetAdminClassLeaderboard_WhenRoadTypeMissing_ReturnsBadRequest()
         {
-            // Arrange er tom
-            // Vi tester hvad der sker når roadType mangler
-
-            // Act kalder controller metoden med tom vejtype
             IActionResult result = _controller.GetAdminClassLeaderboard("");
 
-            // Assert tjekker at controlleren returnerer 400
             Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
         public void GetAdminClassLeaderboard_WhenNoData_ReturnsNotFound()
         {
-            // Arrange er tom
-            // Der findes ingen sessions eller målinger i databasen
-
-            // Act prøver at hente leaderboard for byzone 50
             IActionResult result = _controller.GetAdminClassLeaderboard("byzone 50");
 
-            // Assert tjekker at controlleren returnerer 404
             Assert.IsType<NotFoundObjectResult>(result);
         }
 
         [Fact]
         public void GetAdminClassLeaderboard_WhenDataExists_ReturnsOk()
         {
-            // Arrange opretter gruppe session og måling
             Group group = CreateGroup();
 
             _context.Groups.Add(group);
@@ -137,19 +127,14 @@ namespace TDDTest
             _context.Measurements.Add(measurement);
             _context.SaveChanges();
 
-            // Act henter klasse leaderboard
-            IActionResult result =
-                _controller.GetAdminClassLeaderboard("byzone 50");
+            IActionResult result = _controller.GetAdminClassLeaderboard("byzone 50");
 
-            // Assert tjekker at controlleren returnerer 200
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
         public void GetAdminSchoolLeaderboard_WhenMockDataExists_ReturnsOk()
         {
-            // Arrange opretter mock skoledata
-            // Det svarer til andre skolers hardcoded data
             SchoolLeaderboardMock mock = new SchoolLeaderboardMock
             {
                 SchoolName = "Roskilde Skole",
@@ -162,48 +147,26 @@ namespace TDDTest
             _context.SchoolLeaderboardMocks.Add(mock);
             _context.SaveChanges();
 
-            // Act henter skole leaderboard
-            IActionResult result =
-                _controller.GetAdminSchoolLeaderboard("byzone 50");
+            IActionResult result = _controller.GetAdminSchoolLeaderboard("byzone 50");
 
-            // Assert tjekker at controlleren returnerer 200
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
         public void GetStudentClassLeaderboard_WhenLeaderboardDisabled_ReturnsForbid()
         {
-            // Arrange slår leaderboard fra
-            // Elever må derfor ikke se leaderboard
-            LeaderboardSetting setting = new LeaderboardSetting
-            {
-                IsEnabled = false
-            };
+            CreateLeaderboardSetting(false);
 
-            _context.LeaderboardSettings.Add(setting);
-            _context.SaveChanges();
+            IActionResult result = _controller.GetStudentClassLeaderboard("byzone 50");
 
-            // Act elev prøver at hente klasse leaderboard
-            IActionResult result =
-                _controller.GetStudentClassLeaderboard("byzone 50");
-
-            // Assert tjekker at controlleren returnerer 403
             Assert.IsType<ForbidResult>(result);
         }
 
         [Fact]
         public void GetStudentSchoolLeaderboard_WhenLeaderboardEnabled_ReturnsOk()
         {
-            // Arrange slår leaderboard til
-            // Elever må derfor se leaderboard
-            LeaderboardSetting setting = new LeaderboardSetting
-            {
-                IsEnabled = true
-            };
+            CreateLeaderboardSetting(true);
 
-            _context.LeaderboardSettings.Add(setting);
-
-            // Arrange opretter mock skoledata
             SchoolLeaderboardMock mock = new SchoolLeaderboardMock
             {
                 SchoolName = "Roskilde Skole",
@@ -214,33 +177,24 @@ namespace TDDTest
             };
 
             _context.SchoolLeaderboardMocks.Add(mock);
-
             _context.SaveChanges();
 
-            // Act elev henter skole leaderboard
-            IActionResult result =
-                _controller.GetStudentSchoolLeaderboard("byzone 50");
+            IActionResult result = _controller.GetStudentSchoolLeaderboard("byzone 50");
 
-            // Assert tjekker at controlleren returnerer 200
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
         public void UpdateLeaderboardSetting_WhenCalled_ReturnsOk()
         {
-            // Arrange laver request objekt
-            // Requesten fortæller at leaderboard skal slås til
             UpdateLeaderboardSettingRequest request =
                 new UpdateLeaderboardSettingRequest
                 {
                     IsEnabled = true
                 };
 
-            // Act kalder controller metoden
-            IActionResult result =
-                _controller.UpdateLeaderboardSetting(request);
+            IActionResult result = _controller.UpdateLeaderboardSetting(request);
 
-            // Assert tjekker at controlleren returnerer 200
             Assert.IsType<OkObjectResult>(result);
         }
     }

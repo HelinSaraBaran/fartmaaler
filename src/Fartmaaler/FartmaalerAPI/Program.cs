@@ -31,9 +31,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Tilf�jer controllers og Swagger
+// Tilføjer controllers og Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -62,13 +63,13 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Tilf�jer repositories
+// Tilføjer repositories
 builder.Services.AddScoped<IRepository<Group>, GroupsRepo>();
 builder.Services.AddScoped<IRepository<Session>, SessionsRepo>();
 builder.Services.AddScoped<IRepository<Measurement>, MeasurementsRepo>();
 builder.Services.AddScoped<MeasurementsRepo>();
 
-// Tilf�jer services
+// Tilføjer services
 builder.Services.AddScoped<MeasurementService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<LeaderboardService>();
@@ -76,7 +77,7 @@ builder.Services.AddScoped<LeaderboardService>();
 var app = builder.Build();
 
 // Seeder standard data
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
     AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -107,7 +108,7 @@ using (var scope = app.Services.CreateScope())
             },
             new SchoolLeaderboardMock
             {
-                SchoolName = "Holbaek Skole",
+                SchoolName = "Holbæk Skole",
                 RoadType = "byzone 50",
                 AverageScore = 10.1,
                 AverageCo2 = 6.0,
@@ -123,7 +124,7 @@ using (var scope = app.Services.CreateScope())
             },
             new SchoolLeaderboardMock
             {
-                SchoolName = "Holbaek Skole",
+                SchoolName = "Holbæk Skole",
                 RoadType = "landevej 80",
                 AverageScore = 14.3,
                 AverageCo2 = 9.5,
@@ -139,7 +140,7 @@ using (var scope = app.Services.CreateScope())
             },
             new SchoolLeaderboardMock
             {
-                SchoolName = "Holbaek Skole",
+                SchoolName = "Holbæk Skole",
                 RoadType = "motorvej 130",
                 AverageScore = 20.6,
                 AverageCo2 = 15.7,
@@ -150,26 +151,17 @@ using (var scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 
-    // Seeder leaderboard setting
-    if (!context.LeaderboardSettings.Any())
-    {
-        context.LeaderboardSettings.Add(new LeaderboardSetting
-        {
-            IsEnabled = false
-        });
-
-        context.SaveChanges();
-    }
-
+    // Seeder globale settings
     if (!context.Settings.Any())
     {
         context.Settings.AddRange(
-            new FartmaalerAPI.Models.Settings { Key = "TTS", Value = true },
-            new FartmaalerAPI.Models.Settings { Key = "BipLyd", Value = true },
-            new FartmaalerAPI.Models.Settings { Key = "FunFacts", Value = true },
-            new FartmaalerAPI.Models.Settings { Key = "Leaderboard", Value = true },
-            new FartmaalerAPI.Models.Settings { Key = "VisuelFeedback", Value = true }
+            new Settings { Key = "TTS", Value = true },
+            new Settings { Key = "BipLyd", Value = true },
+            new Settings { Key = "FunFacts", Value = true },
+            new Settings { Key = "Leaderboard", Value = true },
+            new Settings { Key = "VisuelFeedback", Value = true }
         );
+
         context.SaveChanges();
     }
 }

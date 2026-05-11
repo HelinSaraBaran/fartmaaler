@@ -11,7 +11,6 @@ namespace FartmaalerAPI.Services
 
         private const string OwnSchoolName = "Køge Skole";
 
-        // Constructor modtager database context
         public LeaderboardService(AppDbContext context)
         {
             _context = context;
@@ -80,7 +79,6 @@ namespace FartmaalerAPI.Services
         public List<SchoolLeaderboardResponse> GetSchoolLeaderboard(string roadType)
         {
             List<LeaderboardEntryResponse> classLeaderboard = GetClassLeaderboard(roadType);
-
             List<SchoolLeaderboardResponse> schoolLeaderboard = new List<SchoolLeaderboardResponse>();
 
             if (classLeaderboard.Count > 0)
@@ -122,36 +120,37 @@ namespace FartmaalerAPI.Services
                 .ToList();
         }
 
-        // Tjekker om leaderboard er slået til
+        // Tjekker om leaderboard er slået til i Settings
         public bool IsLeaderboardEnabled()
         {
-            LeaderboardSetting? setting = _context.LeaderboardSettings
-                .FirstOrDefault();
+            Settings? setting = _context.Settings
+                .FirstOrDefault(setting => setting.Key.ToLower() == "leaderboard");
 
             if (setting == null)
                 return false;
 
-            return setting.IsEnabled;
+            return setting.Value;
         }
 
-        // Opdaterer om elever må se leaderboard
-        public LeaderboardSetting UpdateLeaderboardSetting(bool isEnabled)
+        // Opdaterer leaderboard setting i Settings
+        public Settings UpdateLeaderboardSetting(bool isEnabled)
         {
-            LeaderboardSetting? setting = _context.LeaderboardSettings
-                .FirstOrDefault();
+            Settings? setting = _context.Settings
+                .FirstOrDefault(setting => setting.Key.ToLower() == "leaderboard");
 
             if (setting == null)
             {
-                setting = new LeaderboardSetting
+                setting = new Settings
                 {
-                    IsEnabled = isEnabled
+                    Key = "Leaderboard",
+                    Value = isEnabled
                 };
 
-                _context.LeaderboardSettings.Add(setting);
+                _context.Settings.Add(setting);
             }
             else
             {
-                setting.IsEnabled = isEnabled;
+                setting.Value = isEnabled;
             }
 
             _context.SaveChanges();

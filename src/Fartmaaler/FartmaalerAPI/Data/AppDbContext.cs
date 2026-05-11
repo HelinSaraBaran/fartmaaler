@@ -3,39 +3,32 @@ using FartmaalerAPI.Models;
 
 namespace FartmaalerAPI.Data
 {
-    // DbContext er forbindelsen mellem programmet og databasen
-    // Denne klasse styrer hvilke tabeller vi har og hvordan vi arbejder med data
+    // DbContext styrer forbindelsen mellem programmet og databasen
+    // Klassen indeholder alle tabeller i systemet
     public class AppDbContext : DbContext
     {
-        // Constructor modtager database-indstillinger (connection string osv)
-        // og sender dem videre til base DbContext
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        // Constructor modtager database indstillinger
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
 
-        // Users bliver til en tabel i databasen
-        // Indeholder alle brugere i systemet
+        // Brugere i systemet
         public DbSet<User> Users { get; set; }
 
-        // Groups bliver til en tabel
-        // Bruges til at gruppere brugere (fx klasser eller hold)
+        // Grupper eller klasser
         public DbSet<Group> Groups { get; set; }
 
-        // Sessions bliver til en tabel
-        // En session kan være en måling eller et forsøg med fartmåleren
+        // Sessions for gruppernes forsøg
         public DbSet<Session> Sessions { get; set; }
 
-        // Measurements bliver til en tabel
-        // Indeholder selve målingerne (hastighed, tid osv.)
+        // Målinger fra fartmåleren
         public DbSet<Measurement> Measurements { get; set; }
 
-
-        // SchoolLeaderboardMocks bliver til en tabel
-        // Bruges til hardcoded skoledata i leaderboard
+        // Hardcoded skoledata til skole leaderboard
         public DbSet<SchoolLeaderboardMock> SchoolLeaderboardMocks { get; set; }
 
-        // LeaderboardSettings bliver til en tabel i databasen
-        public DbSet<LeaderboardSetting> LeaderboardSettings { get; set; }
-        // Settings bliver til en tabel
-        // Indeholder Settings objekter
+        // Globale system indstillinger
         public DbSet<Settings> Settings { get; set; }
     }
 }

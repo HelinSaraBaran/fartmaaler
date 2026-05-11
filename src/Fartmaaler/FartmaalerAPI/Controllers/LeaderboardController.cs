@@ -12,7 +12,6 @@ namespace FartmaalerAPI.Controllers
     {
         private readonly LeaderboardService _leaderboardService;
 
-        // Constructor modtager leaderboard service
         public LeaderboardController(LeaderboardService leaderboardService)
         {
             _leaderboardService = leaderboardService;
@@ -24,14 +23,14 @@ namespace FartmaalerAPI.Controllers
         public IActionResult GetAdminClassLeaderboard(string roadType)
         {
             if (string.IsNullOrWhiteSpace(roadType))
-                return BadRequest(new { message = "Vejtype skal udfyldes" }); // 400
+                return BadRequest(new { message = "Vejtype skal udfyldes" });
 
             List<LeaderboardEntryResponse> result = _leaderboardService.GetClassLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" }); // 404
+                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" });
 
-            return Ok(result); // 200
+            return Ok(result);
         }
 
         // Admin henter skole leaderboard
@@ -40,50 +39,50 @@ namespace FartmaalerAPI.Controllers
         public IActionResult GetAdminSchoolLeaderboard(string roadType)
         {
             if (string.IsNullOrWhiteSpace(roadType))
-                return BadRequest(new { message = "Vejtype skal udfyldes" }); // 400
+                return BadRequest(new { message = "Vejtype skal udfyldes" });
 
             List<SchoolLeaderboardResponse> result = _leaderboardService.GetSchoolLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen skoledata for denne vejtype" }); // 404
+                return NotFound(new { message = "Ingen skoledata for denne vejtype" });
 
-            return Ok(result); // 200
+            return Ok(result);
         }
 
-        // Elev henter klasse leaderboard
+        // Elev henter klasse leaderboard hvis det er slået til
         [HttpGet("student/class")]
         public IActionResult GetStudentClassLeaderboard(string roadType)
         {
             if (!_leaderboardService.IsLeaderboardEnabled())
-                return Forbid(); // 403
+                return Forbid();
 
             if (string.IsNullOrWhiteSpace(roadType))
-                return BadRequest(new { message = "Vejtype skal udfyldes" }); // 400
+                return BadRequest(new { message = "Vejtype skal udfyldes" });
 
             List<LeaderboardEntryResponse> result = _leaderboardService.GetClassLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" }); // 404
+                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" });
 
-            return Ok(result); // 200
+            return Ok(result);
         }
 
-        // Elev henter skole leaderboard
+        // Elev henter skole leaderboard hvis det er slået til
         [HttpGet("student/school")]
         public IActionResult GetStudentSchoolLeaderboard(string roadType)
         {
             if (!_leaderboardService.IsLeaderboardEnabled())
-                return Forbid(); // 403
+                return Forbid();
 
             if (string.IsNullOrWhiteSpace(roadType))
-                return BadRequest(new { message = "Vejtype skal udfyldes" }); // 400
+                return BadRequest(new { message = "Vejtype skal udfyldes" });
 
             List<SchoolLeaderboardResponse> result = _leaderboardService.GetSchoolLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen skoledata for denne vejtype" }); // 404
+                return NotFound(new { message = "Ingen skoledata for denne vejtype" });
 
-            return Ok(result); // 200
+            return Ok(result);
         }
 
         // Admin ser om leaderboard er slået til
@@ -93,7 +92,7 @@ namespace FartmaalerAPI.Controllers
         {
             bool isEnabled = _leaderboardService.IsLeaderboardEnabled();
 
-            return Ok(new { isEnabled = isEnabled }); // 200
+            return Ok(new { isEnabled = isEnabled });
         }
 
         // Admin slår leaderboard til eller fra
@@ -101,9 +100,9 @@ namespace FartmaalerAPI.Controllers
         [HttpPut("setting")]
         public IActionResult UpdateLeaderboardSetting([FromBody] UpdateLeaderboardSettingRequest request)
         {
-            LeaderboardSetting setting = _leaderboardService.UpdateLeaderboardSetting(request.IsEnabled);
+            Settings setting = _leaderboardService.UpdateLeaderboardSetting(request.IsEnabled);
 
-            return Ok(setting); // 200
+            return Ok(setting);
         }
     }
 }

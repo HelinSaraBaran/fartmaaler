@@ -42,8 +42,7 @@ namespace TDDTest
 
             // Assert
             Assert.Null(result);
-        }           
-
+        }
 
         [Fact]
         public void CreateMeasurement_ReturnsNull_WhenTimeInvalid()
@@ -53,7 +52,13 @@ namespace TDDTest
             {
                 Id = 1,
                 GroupId = 1,
-                Group = new Group { Id = 1, Name = "G", School = "S", IsLocked = false },
+                Group = new Group
+                {
+                    Id = 1,
+                    Name = "G",
+                    School = "S",
+                    IsLocked = false
+                },
                 CarType = "A",
                 RoadType = "R",
                 SpeedLimit = 50,
@@ -61,6 +66,7 @@ namespace TDDTest
                 Status = "running",
                 CreatedAt = DateTime.UtcNow
             };
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
@@ -75,7 +81,7 @@ namespace TDDTest
         public void CreateMeasurement_ReturnsNull_WhenSessionNotFound()
         {
             // Arrange
-            // no session added
+            // Ingen session oprettet
 
             // Act
             var result = _service.CreateMeasurement(999, 1);
@@ -92,7 +98,13 @@ namespace TDDTest
             {
                 Id = 10,
                 GroupId = 1,
-                Group = new Group { Id = 1, Name = "G", School = "S", IsLocked = false },
+                Group = new Group
+                {
+                    Id = 1,
+                    Name = "G",
+                    School = "S",
+                    IsLocked = false
+                },
                 CarType = "A",
                 RoadType = "R",
                 SpeedLimit = 50,
@@ -101,6 +113,7 @@ namespace TDDTest
                 CreatedAt = DateTime.UtcNow,
                 EndedAt = DateTime.UtcNow
             };
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
@@ -115,12 +128,18 @@ namespace TDDTest
         public void CreateMeasurement_CreatesMeasurement_WithExpectedValues()
         {
             // Arrange
-            // If timeSeconds = 1 -> measuredSpeedKmh = 18.00, simulated = 18/18 * SpeedLimit
+            // Hvis tiden er 1 sekund bliver hastigheden 18 km/t
             var session = new Session
             {
                 Id = 5,
                 GroupId = 1,
-                Group = new Group { Id = 1, Name = "G", School = "S", IsLocked = false },
+                Group = new Group
+                {
+                    Id = 1,
+                    Name = "G",
+                    School = "S",
+                    IsLocked = false
+                },
                 CarType = "A",
                 RoadType = "R",
                 SpeedLimit = 50,
@@ -128,6 +147,7 @@ namespace TDDTest
                 Status = "running",
                 CreatedAt = DateTime.UtcNow
             };
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
@@ -140,12 +160,13 @@ namespace TDDTest
             Assert.Equal(5.0, created.Distance);
             Assert.Equal(1, created.Time);
             Assert.Equal(18.00, created.MeasuredSpeed);
-            Assert.Equal(50.00, created.SimulatedSpeed);
+            Assert.Equal(18.00, created.SimulatedSpeed);
             Assert.Equal(50, created.SpeedLimit);
-            Assert.Equal("On limit", created.Status);
+            Assert.Equal("Under limit", created.Status);
 
             var fromDb = _context.Measurements.Find(created.Id);
+
             Assert.NotNull(fromDb);
         }
     }
-}           
+}

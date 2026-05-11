@@ -4,19 +4,21 @@ using FartmaalerAPI.Repositories;
 
 namespace FartmaalerAPI.Services
 {
+    // Denne service håndterer beregning og oprettelse af målinger
     public class MeasurementService
     {
         private readonly AppDbContext _context;
         private readonly MeasurementsRepo _repo;
 
         private const double DistanceMeters = 5.0;
-        private const double ToyCarReferenceMaxKmh = 18.0;
 
         public MeasurementService(AppDbContext context, MeasurementsRepo repo)
         {
             _context = context;
             _repo = repo;
         }
+
+        // Returnerer CO2 faktor ud fra biltype
         private double GetCo2Factor(string carType)
         {
             return carType?.ToLower() switch
@@ -29,12 +31,13 @@ namespace FartmaalerAPI.Services
             };
         }
 
+        // Opretter en måling ud fra session og tid
         public Measurement? CreateMeasurement(int sessionId, double timeSeconds)
         {
             if (sessionId <= 0 || timeSeconds <= 0)
                 return null;
 
-            var session = _context.Sessions.FirstOrDefault(s => s.Id == sessionId);
+            Session? session = _context.Sessions.FirstOrDefault(session => session.Id == sessionId);
 
             if (session == null)
                 return null;
@@ -45,8 +48,8 @@ namespace FartmaalerAPI.Services
             double speedMetersPerSecond = DistanceMeters / timeSeconds;
             double measuredSpeedKmh = speedMetersPerSecond * 3.6;
 
-            double simulatedSpeedKmh =
-                measuredSpeedKmh / ToyCarReferenceMaxKmh * session.SpeedLimit;
+            // User story 9: målt hastighed ganges med sessionens scaling factor
+            double simulatedSpeedKmh = measuredSpeedKmh * session.ScalingFactor;
 
             string status;
 
@@ -57,6 +60,8 @@ namespace FartmaalerAPI.Services
             else
                 status = "On limit";
 
+            double co2Factor = GetCo2Factor(session.CarType);
+
             Measurement measurement = new Measurement
             {
                 SessionId = sessionId,
@@ -66,8 +71,8 @@ namespace FartmaalerAPI.Services
                 SimulatedSpeed = Math.Round(simulatedSpeedKmh, 2),
                 SpeedLimit = session.SpeedLimit,
                 Status = status,
-                Co2 = Math.Round((GetCo2Factor(session.CarType) * simulatedSpeedKmh) / 1000, 2),
-                Co2Saved = Math.Round((GetCo2Factor(session.CarType) * (session.SpeedLimit - simulatedSpeedKmh)) / 1000, 2),
+                Co2 = Math.Round((co2Factor * simulatedSpeedKmh) / 1000, 2),
+                Co2Saved = Math.Round((co2Factor * (session.SpeedLimit - simulatedSpeedKmh)) / 1000, 2),
                 CreatedAt = DateTime.Now
             };
 

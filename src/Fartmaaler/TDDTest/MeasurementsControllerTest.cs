@@ -7,6 +7,7 @@ using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
 using Xunit;
 
 namespace TDDTest
@@ -20,7 +21,8 @@ namespace TDDTest
 
         public MeasurementsControllerTest()
         {
-            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            DbContextOptions<AppDbContext> options =
+                new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
@@ -35,6 +37,7 @@ namespace TDDTest
             _context.Dispose();
         }
 
+        // Opretter en test session
         private Session CreateSession(string status = "Started")
         {
             return new Session
@@ -49,6 +52,7 @@ namespace TDDTest
             };
         }
 
+        // Opretter en manuel test måling
         private Measurement CreateMeasurement(int sessionId)
         {
             return new Measurement
@@ -57,15 +61,16 @@ namespace TDDTest
                 Time = 1,
                 Distance = 5,
                 MeasuredSpeed = 18,
-                SimulatedSpeed = 50,
+                SimulatedSpeed = 180,
                 SpeedLimit = 50,
-                Status = "On limit",
+                Status = "Too fast",
                 Co2 = 0,
                 Co2Saved = 0,
                 CreatedAt = DateTime.Now
             };
         }
 
+        // Opretter request til måling
         private CreateMeasurementRequest CreateMeasurementRequest(int sessionId, double time)
         {
             return new CreateMeasurementRequest
@@ -79,12 +84,15 @@ namespace TDDTest
         public void Add_ValidMeasurement_ReturnsCreated()
         {
             Session session = CreateSession();
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(session.Id, 1);
 
-            ActionResult<Measurement> result = _controller.Add(request);
+            ActionResult<Measurement> result =
+                _controller.Add(request);
 
             Assert.IsType<CreatedAtActionResult>(result.Result);
         }
@@ -93,10 +101,12 @@ namespace TDDTest
         public void Add_ValidMeasurement_SavesMeasurementInDatabase()
         {
             Session session = CreateSession();
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(session.Id, 1);
 
             _controller.Add(request);
 
@@ -107,29 +117,34 @@ namespace TDDTest
         public void Add_ValidMeasurement_CalculatesCorrectValues()
         {
             Session session = CreateSession();
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(session.Id, 1);
 
             _controller.Add(request);
 
-            Measurement savedMeasurement = _context.Measurements.First();
+            Measurement savedMeasurement =
+                _context.Measurements.First();
 
             Assert.Equal(5, savedMeasurement.Distance);
             Assert.Equal(1, savedMeasurement.Time);
             Assert.Equal(18, savedMeasurement.MeasuredSpeed);
-            Assert.Equal(50, savedMeasurement.SimulatedSpeed);
+            Assert.Equal(180, savedMeasurement.SimulatedSpeed);
             Assert.Equal(50, savedMeasurement.SpeedLimit);
-            Assert.Equal("On limit", savedMeasurement.Status);
+            Assert.Equal("Too fast", savedMeasurement.Status);
         }
 
         [Fact]
         public void Add_WhenSessionIdInvalid_ReturnsBadRequest()
         {
-            CreateMeasurementRequest request = CreateMeasurementRequest(0, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(0, 1);
 
-            ActionResult<Measurement> result = _controller.Add(request);
+            ActionResult<Measurement> result =
+                _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -137,9 +152,11 @@ namespace TDDTest
         [Fact]
         public void Add_WhenSessionNotFound_ReturnsNotFound()
         {
-            CreateMeasurementRequest request = CreateMeasurementRequest(999, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(999, 1);
 
-            ActionResult<Measurement> result = _controller.Add(request);
+            ActionResult<Measurement> result =
+                _controller.Add(request);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -148,12 +165,15 @@ namespace TDDTest
         public void Add_WhenTimeIsZero_ReturnsBadRequest()
         {
             Session session = CreateSession();
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 0);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(session.Id, 0);
 
-            ActionResult<Measurement> result = _controller.Add(request);
+            ActionResult<Measurement> result =
+                _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -162,12 +182,15 @@ namespace TDDTest
         public void Add_WhenSessionEnded_ReturnsBadRequest()
         {
             Session session = CreateSession("Ended");
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            CreateMeasurementRequest request = CreateMeasurementRequest(session.Id, 1);
+            CreateMeasurementRequest request =
+                CreateMeasurementRequest(session.Id, 1);
 
-            ActionResult<Measurement> result = _controller.Add(request);
+            ActionResult<Measurement> result =
+                _controller.Add(request);
 
             Assert.IsType<BadRequestObjectResult>(result.Result);
         }
@@ -175,7 +198,8 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenNotExists_ReturnsNotFound()
         {
-            ActionResult<Measurement> result = _controller.Delete(999);
+            ActionResult<Measurement> result =
+                _controller.Delete(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
@@ -183,9 +207,11 @@ namespace TDDTest
         [Fact]
         public void Delete_WhenMeasurementExists_ReturnsOk()
         {
-            Measurement measurement = _repo.Add(CreateMeasurement(1));
+            Measurement measurement =
+                _repo.Add(CreateMeasurement(1));
 
-            ActionResult<Measurement> result = _controller.Delete(measurement.Id);
+            ActionResult<Measurement> result =
+                _controller.Delete(measurement.Id);
 
             Assert.IsType<OkObjectResult>(result.Result);
         }
@@ -193,9 +219,11 @@ namespace TDDTest
         [Fact]
         public void Update_Always_ReturnsBadRequest()
         {
-            Measurement measurement = CreateMeasurement(1);
+            Measurement measurement =
+                CreateMeasurement(1);
 
-            IActionResult result = _controller.Update(1, measurement);
+            IActionResult result =
+                _controller.Update(1, measurement);
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
@@ -203,7 +231,8 @@ namespace TDDTest
         [Fact]
         public void GetSessionSummary_WhenSessionNotFound_ReturnsNotFound()
         {
-            IActionResult result = _controller.GetSessionSummary(999);
+            IActionResult result =
+                _controller.GetSessionSummary(999);
 
             Assert.IsType<NotFoundObjectResult>(result);
         }
@@ -212,12 +241,16 @@ namespace TDDTest
         public void GetSessionSummary_WhenNoMeasurements_ReturnsZeroValues()
         {
             Session session = CreateSession();
+
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            IActionResult result = _controller.GetSessionSummary(session.Id);
+            IActionResult result =
+                _controller.GetSessionSummary(session.Id);
 
-            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result);
+            OkObjectResult okResult =
+                Assert.IsType<OkObjectResult>(result);
+
             Assert.NotNull(okResult.Value);
         }
     }
