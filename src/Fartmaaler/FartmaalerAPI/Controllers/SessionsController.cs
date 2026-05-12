@@ -16,7 +16,6 @@ namespace FartmaalerAPI.Controllers
         private readonly AppDbContext _context;
         private readonly SessionService _sessionService;
 
-        // Constructor modtager repository, context og service
         public SessionsController(
             IRepository<Session> repo,
             AppDbContext context,
@@ -27,14 +26,12 @@ namespace FartmaalerAPI.Controllers
             _sessionService = sessionService;
         }
 
-        // Henter alle sessions
         [HttpGet]
         public ActionResult<IEnumerable<Session>> GetAll()
         {
             return Ok(_repo.GetAll());
         }
 
-        // Henter session ud fra id
         [HttpGet("{id}")]
         public ActionResult<Session> GetById(int id)
         {
@@ -48,23 +45,19 @@ namespace FartmaalerAPI.Controllers
             return Ok(session);
         }
 
-        // Opretter en ny session
         [HttpPost]
         public ActionResult<Session> Add([FromBody] StartSessionRequest request)
         {
-            // Tjekker om group id er gyldigt
             if (request.GroupId <= 0)
             {
                 return BadRequest(new { message = "GroupId er påkrævet" });
             }
 
-            // Tjekker om biltype er udfyldt
             if (string.IsNullOrWhiteSpace(request.CarType))
             {
                 return BadRequest(new { message = "Biltype er påkrævet" });
             }
 
-            // Tjekker om vejtype er udfyldt
             if (string.IsNullOrWhiteSpace(request.RoadType))
             {
                 return BadRequest(new { message = "Vejtype er påkrævet" });
@@ -72,7 +65,6 @@ namespace FartmaalerAPI.Controllers
 
             string roadType = request.RoadType.Trim().ToLower();
 
-            // Tjekker om vejtypen er gyldig
             if (roadType != "byzone 50" &&
                 roadType != "landevej 80" &&
                 roadType != "motorvej 130")
@@ -80,7 +72,6 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Vejtypen er ikke gyldig" });
             }
 
-            // Finder gruppen først, så vi kan give en præcis fejlbesked
             Group? group = _context.Groups
                 .FirstOrDefault(group => group.Id == request.GroupId);
 
@@ -94,7 +85,6 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
             }
 
-            // Service opretter sessionen og låser gruppen
             Session? createdSession = _sessionService.StartSession(
                 request.GroupId,
                 request.CarType.Trim(),
@@ -111,9 +101,9 @@ namespace FartmaalerAPI.Controllers
                 createdSession);
         }
 
-        // Afslutter en session
+        [Authorize(Roles = "admin")]
         [HttpPut("{id}/end")]
-        public ActionResult<Session> EndSession(int id)
+        public ActionResult<object> EndSession(int id)
         {
             Session? endedSession = _sessionService.EndSession(id);
 
@@ -122,10 +112,13 @@ namespace FartmaalerAPI.Controllers
                 return NotFound(new { message = "Session blev ikke fundet" });
             }
 
-            return Ok(endedSession);
+            return Ok(new
+            {
+                message = "Session blev afsluttet",
+                session = endedSession
+            });
         }
 
-        // Henter historik for en gruppe med filter og sortering
         [HttpGet("group/{groupId}/history")]
         public IActionResult GetHistoryByGroup(
             int groupId,
@@ -153,7 +146,6 @@ namespace FartmaalerAPI.Controllers
             return Ok(history);
         }
 
-        // Opdaterer en session
         [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
@@ -168,7 +160,6 @@ namespace FartmaalerAPI.Controllers
             return Ok(updated);
         }
 
-        // Sletter en session
         [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public ActionResult<Session> Delete(int id)
@@ -199,7 +190,6 @@ namespace FartmaalerAPI.Controllers
             return Ok(deleted);
         }
 
-        // Sletter alle sessions og målinger
         [Authorize(Roles = "admin")]
         [HttpDelete("all")]
         public IActionResult DeleteAll()
@@ -209,7 +199,6 @@ namespace FartmaalerAPI.Controllers
                 _context.Measurements.RemoveRange(_context.Measurements);
                 _context.Sessions.RemoveRange(_context.Sessions);
 
-                // Frigør alle grupper
                 List<Group> groups = _context.Groups
                     .Where(group => group.IsLocked)
                     .ToList();
@@ -229,7 +218,6 @@ namespace FartmaalerAPI.Controllers
             }
         }
 
-        // Henter gennemsnit for hele klassen
         [Authorize(Roles = "admin")]
         [HttpGet("class-summary")]
         public IActionResult GetClassSummary()

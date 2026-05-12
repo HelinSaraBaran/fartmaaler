@@ -24,13 +24,11 @@ namespace TDDTest
         {
             DbContextOptions<AppDbContext> options =
                 new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
+                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                    .Options;
 
             _context = new AppDbContext(options);
-
             _repo = new SessionsRepo(_context);
-
             _sessionService = new SessionService(_context);
 
             _controller = new SessionsController(
@@ -44,7 +42,6 @@ namespace TDDTest
             _context.Dispose();
         }
 
-        // Opretter test gruppe
         private Group CreateGroup()
         {
             return new Group
@@ -55,7 +52,6 @@ namespace TDDTest
             };
         }
 
-        // Opretter test session
         private Session CreateSession(int groupId, string status = "Active")
         {
             return new Session
@@ -66,11 +62,11 @@ namespace TDDTest
                 SpeedLimit = 50,
                 ScalingFactor = 10,
                 Status = status,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                EndedAt = null
             };
         }
 
-        // Opretter request til start session
         private StartSessionRequest CreateStartSessionRequest(int groupId)
         {
             return new StartSessionRequest
@@ -107,8 +103,7 @@ namespace TDDTest
             _context.Sessions.AddRange(
                 CreateSession(group.Id),
                 CreateSession(group.Id),
-                CreateSession(group.Id)
-            );
+                CreateSession(group.Id));
 
             _context.SaveChanges();
 
@@ -411,7 +406,7 @@ namespace TDDTest
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            ActionResult<Session> result =
+            ActionResult<object> result =
                 _controller.EndSession(session.Id);
 
             Assert.IsType<OkObjectResult>(result.Result);
@@ -449,7 +444,7 @@ namespace TDDTest
         [Fact]
         public void EndSession_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            ActionResult<Session> result =
+            ActionResult<object> result =
                 _controller.EndSession(999);
 
             Assert.IsType<NotFoundObjectResult>(result.Result);
