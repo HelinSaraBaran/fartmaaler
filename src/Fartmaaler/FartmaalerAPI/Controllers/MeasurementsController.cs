@@ -27,6 +27,7 @@ namespace FartmaalerAPI.Controllers
             _measurementService = measurementService;
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public IActionResult GetAll()
         {
@@ -36,16 +37,19 @@ namespace FartmaalerAPI.Controllers
             {
                 return Ok(new
                 {
-                    message = "Ingen målinger fundet",
-                  
+                    message = "Ingen målinger fundet"
                 });
             }
 
-            return Ok(measurements);
-            
-              
+            return Ok(new
+            {
+                totalMeasurements = measurements.Count,
+                measurements = measurements
+            });
         }
 
+
+        [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Measurement> GetById(int id)
         {

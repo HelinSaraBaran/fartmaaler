@@ -41,6 +41,7 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Group> GetById(int id)
         {
