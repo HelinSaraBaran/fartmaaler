@@ -119,7 +119,7 @@ namespace FartmaalerAPI.Controllers
                 createdSession);
         }
 
-        [Authorize(Roles = "admin")]
+        
         [HttpPut("{id}/end")]
         public ActionResult<object> EndSession(int id)
         {
