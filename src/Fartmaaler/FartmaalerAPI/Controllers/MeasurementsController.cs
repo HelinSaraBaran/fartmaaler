@@ -28,9 +28,22 @@ namespace FartmaalerAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Measurement>> GetAll()
+        public IActionResult GetAll()
         {
-            return Ok(_repo.GetAll());
+            var measurements = _repo.GetAll().ToList();
+
+            if (!measurements.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen målinger fundet",
+                  
+                });
+            }
+
+            return Ok(measurements);
+            
+              
         }
 
         [HttpGet("{id}")]
