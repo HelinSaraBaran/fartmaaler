@@ -27,9 +27,24 @@ namespace FartmaalerAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Session>> GetAll()
+        public IActionResult GetAll()
         {
-            return Ok(_repo.GetAll());
+            var sessions = _repo.GetAll().ToList();
+
+            if (!sessions.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen sessions fundet",
+               
+                });
+            }
+
+            return Ok(new
+            {
+                totalSessions = sessions.Count,
+                sessions = sessions
+            });
         }
 
         [HttpGet("{id}")]
@@ -162,7 +177,7 @@ namespace FartmaalerAPI.Controllers
 
         [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
-        public ActionResult<Session> Delete(int id)
+        public IActionResult Delete(int id)
         {
             Session? session = _context.Sessions
                 .FirstOrDefault(session => session.Id == id);
@@ -172,6 +187,12 @@ namespace FartmaalerAPI.Controllers
                 return NotFound(new { message = "Session blev ikke fundet" });
             }
 
+            List<Measurement> measurements = _context.Measurements
+                .Where(measurement => measurement.SessionId == id)
+                .ToList();
+
+            _context.Measurements.RemoveRange(measurements);
+
             Group? group = _context.Groups
                 .FirstOrDefault(group => group.Id == session.GroupId);
 
@@ -180,14 +201,13 @@ namespace FartmaalerAPI.Controllers
                 group.IsLocked = false;
             }
 
-            Session? deleted = _repo.Delete(id);
+            _context.Sessions.Remove(session);
+            _context.SaveChanges();
 
-            if (deleted == null)
+            return Ok(new
             {
-                return NotFound(new { message = "Session blev ikke fundet" });
-            }
-
-            return Ok(deleted);
+                message = "Session og tilhørende målinger blev slettet"
+            });
         }
 
         [Authorize(Roles = "admin")]
@@ -306,8 +326,21 @@ namespace FartmaalerAPI.Controllers
                 ? Math.Round(sessions.Average(s => s.AverageSpeed), 2)
                 : 0;
 
+            if (!sessions.Any())
+            {
+                return Ok(new
+
+                {
+                    message = "Ingen sessions fundet",
+                 
+
+                });
+            }
+
+
             return Ok(new
             {
+               
                 ClassAverageSpeed = classAverageSpeed,
                 TotalSessions = sessions.Count,
                 Sessions = sessions.Select(s => new
