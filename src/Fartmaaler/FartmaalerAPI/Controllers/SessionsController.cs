@@ -272,7 +272,13 @@ namespace FartmaalerAPI.Controllers
         [HttpGet("admin")]
         public IActionResult GetAdminSessions(
     string? sortBy = "date",
-    string? sortDirection = "desc")
+    string? sortDirection = "desc",
+    string? carType = null,
+    string? roadType = null,
+    string? status = null,
+    DateTime? startDate = null,
+    DateTime? endDate = null,
+    string? groupName = null)
         {
             var sessions = _context.Sessions
                 .Select(s => new
@@ -292,6 +298,50 @@ namespace FartmaalerAPI.Controllers
                         .Average(m => (double?)m.SimulatedSpeed) ?? 0
                 })
                 .ToList();
+
+
+            if (!string.IsNullOrWhiteSpace(carType))
+            {
+                sessions = sessions
+                    .Where(s => s.CarType.ToLower() == carType.ToLower())
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(roadType))
+            {
+                sessions = sessions
+                    .Where(s => s.RoadType.ToLower() == roadType.ToLower())
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                sessions = sessions
+                    .Where(s => s.Status.ToLower() == status.ToLower())
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(groupName))
+            {
+                sessions = sessions
+                    .Where(s => s.GroupName.ToLower().Contains(groupName.ToLower()))
+                    .ToList();
+            }
+
+            if (startDate.HasValue)
+            {
+                sessions = sessions
+                    .Where(s => s.Date >= startDate.Value)
+                    .ToList();
+            }
+
+            if (endDate.HasValue)
+            {
+                sessions = sessions
+                    .Where(s => s.Date <= endDate.Value)
+                    .ToList();
+            }
+
 
             bool descending = sortDirection?.ToLower() == "desc";
 
