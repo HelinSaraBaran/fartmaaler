@@ -246,5 +246,82 @@ namespace FartmaalerAPI.Controllers
                 return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
             }
         }
+
+
+        [Authorize(Roles = "admin")]
+        [HttpGet("admin")]
+        public IActionResult GetAdminSessions(
+    string? sortBy = "date",
+    string? sortDirection = "desc")
+        {
+            var sessions = _context.Sessions
+                .Select(s => new
+                {
+                    SessionId = s.Id,
+                    GroupName = s.Group != null ? s.Group.Name : "Ukendt gruppe",
+                    Date = s.CreatedAt,
+                    CarType = s.CarType,
+                    RoadType = s.RoadType,
+                    Status = s.Status,
+
+                    MeasurementCount = _context.Measurements
+                        .Count(m => m.SessionId == s.Id),
+
+                    AverageSpeed = _context.Measurements
+                        .Where(m => m.SessionId == s.Id)
+                        .Average(m => (double?)m.SimulatedSpeed) ?? 0
+                })
+                .ToList();
+
+            bool descending = sortDirection?.ToLower() == "desc";
+
+            sessions = sortBy?.ToLower() switch
+            {
+                "groupname" => descending
+                    ? sessions.OrderByDescending(s => s.GroupName).ToList()
+                    : sessions.OrderBy(s => s.GroupName).ToList(),
+
+                "cartype" => descending
+                    ? sessions.OrderByDescending(s => s.CarType).ToList()
+                    : sessions.OrderBy(s => s.CarType).ToList(),
+
+                "roadtype" => descending
+                    ? sessions.OrderByDescending(s => s.RoadType).ToList()
+                    : sessions.OrderBy(s => s.RoadType).ToList(),
+
+                "speed" or "averagespeed" => descending
+                    ? sessions.OrderByDescending(s => s.AverageSpeed).ToList()
+                    : sessions.OrderBy(s => s.AverageSpeed).ToList(),
+
+                "measurements" or "measurementcount" => descending
+                    ? sessions.OrderByDescending(s => s.MeasurementCount).ToList()
+                    : sessions.OrderBy(s => s.MeasurementCount).ToList(),
+
+                _ => descending
+                    ? sessions.OrderByDescending(s => s.Date).ToList()
+                    : sessions.OrderBy(s => s.Date).ToList()
+            };
+
+            double classAverageSpeed = sessions.Any()
+                ? Math.Round(sessions.Average(s => s.AverageSpeed), 2)
+                : 0;
+
+            return Ok(new
+            {
+                ClassAverageSpeed = classAverageSpeed,
+                TotalSessions = sessions.Count,
+                Sessions = sessions.Select(s => new
+                {
+                    s.SessionId,
+                    s.GroupName,
+                    s.Date,
+                    s.CarType,
+                    s.RoadType,
+                    s.Status,
+                    s.MeasurementCount,
+                    AverageSpeed = Math.Round(s.AverageSpeed, 2)
+                })
+            });
+        }
     }
 }
