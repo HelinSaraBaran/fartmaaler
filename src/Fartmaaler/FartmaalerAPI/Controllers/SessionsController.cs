@@ -85,7 +85,7 @@ namespace FartmaalerAPI.Controllers
 
             if (roadType != "byzone 50" &&
                 roadType != "landevej 80" &&
-                roadType != "motorvej 130")
+                roadType != "motorvej 110")
             {
                 return BadRequest(new { message = "Vejtypen er ikke gyldig" });
             }
