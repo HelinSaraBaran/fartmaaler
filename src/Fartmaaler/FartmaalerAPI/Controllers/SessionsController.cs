@@ -26,6 +26,8 @@ namespace FartmaalerAPI.Controllers
             _sessionService = sessionService;
         }
 
+
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public IActionResult GetAll()
         {
@@ -36,7 +38,7 @@ namespace FartmaalerAPI.Controllers
                 return Ok(new
                 {
                     message = "Ingen sessions fundet",
-               
+
                 });
             }
 
@@ -47,6 +49,7 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Session> GetById(int id)
         {
