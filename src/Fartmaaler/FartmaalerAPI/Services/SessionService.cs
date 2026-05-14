@@ -23,7 +23,7 @@ namespace FartmaalerAPI.Services
             {
                 "byzone 50" => 50,
                 "landevej 80" => 80,
-                "motorvej 130" => 130,
+                "motorvej 110" => 110,
                 _ => 50
             };
         }
@@ -35,7 +35,7 @@ namespace FartmaalerAPI.Services
             {
                 "byzone 50" => 10,
                 "landevej 80" => 15,
-                "motorvej 130" => 20,
+                "motorvej 110" => 20,
                 _ => 10
             };
         }
