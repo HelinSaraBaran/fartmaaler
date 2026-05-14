@@ -159,6 +159,14 @@ namespace FartmaalerAPI.Controllers
                 })
                 .ToList();
 
+            if (!result.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen grupper fundet"
+                });
+            }
+
             return Ok(result);
         }
 
