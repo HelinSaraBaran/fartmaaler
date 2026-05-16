@@ -20,118 +20,164 @@ namespace FartmaalerAPI.Controllers
             _context = context;
         }
 
-        // Bruges til dropdown
+        // Henter alle grupper til dropdown og gruppe oversigt.
         [HttpGet]
         public ActionResult<IEnumerable<Group>> GetAll()
         {
-            var groups = _repo.GetAll();
+            IEnumerable<Group> groups =
+                _repo.GetAll();
 
-            if (!groups.Any())
-            {
-                return Ok(new
-                {
-                    message = "Ingen grupper fundet",
-                    groups = groups
-                });
-            }
-
-            return Ok(new
-            {
-                groups = groups
-            });
+            return Ok(groups);
         }
 
+        // Henter en gruppe ud fra id.
         [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Group> GetById(int id)
         {
-            var group = _repo.GetById(id);
+            Group? group =
+                _repo.GetById(id);
 
             if (group == null)
+            {
                 return NotFound(new { message = "Gruppen blev ikke fundet" });
+            }
 
             return Ok(group);
         }
 
-        // Kun lærer/user må oprette grupper
+        // Opretter en ny gruppe.
         [Authorize(Roles = "admin")]
         [HttpPost]
         public ActionResult<Group> Add([FromBody] CreateGroupRequest request)
         {
+            if (request == null)
+            {
+                return BadRequest(new { message = "Data mangler" });
+            }
+
             if (string.IsNullOrWhiteSpace(request.Name))
+            {
                 return BadRequest(new { message = "Gruppens navn skal udfyldes" });
+            }
 
-            string name = request.Name.Trim();
-            string teacherSchool = "Køge Skole";
+            string name =
+                request.Name.Trim();
 
-            bool groupAlreadyExists = _context.Groups
-                .Any(g => g.Name.ToLower() == name.ToLower()
-                       && g.School == teacherSchool);
+            string teacherSchool =
+                "Roskilde Skole";
+
+            bool groupAlreadyExists =
+                _context.Groups.Any(group =>
+                    group.Name.ToLower() == name.ToLower()
+                    &&
+                    group.School == teacherSchool
+                );
 
             if (groupAlreadyExists)
-                return BadRequest(new { message = "Der findes allerede en gruppe med dette navn på skolen" });
-
-            var group = new Group
             {
-                Name = name,
-                School = teacherSchool,
-                IsLocked = false
-            };
+                return BadRequest(new { message = "Der findes allerede en gruppe med dette navn på skolen" });
+            }
 
-            var created = _repo.Add(group);
+            Group group =
+                new Group
+                {
+                    Name = name,
+                    School = teacherSchool,
+                    IsLocked = false
+                };
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            Group created =
+                _repo.Add(group);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = created.Id },
+                created
+            );
         }
 
-        // Kun lærer/user må redigere grupper
+        // Opdaterer en eksisterende gruppe.
         [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Group> Update(int id, [FromBody] UpdateGroupRequest request)
         {
+            if (request == null)
+            {
+                return BadRequest(new { message = "Data mangler" });
+            }
+
             if (string.IsNullOrWhiteSpace(request.Name))
+            {
                 return BadRequest(new { message = "Gruppens navn skal udfyldes" });
+            }
 
-            string name = request.Name.Trim();
-            string teacherSchool = "Køge Skole";
+            string name =
+                request.Name.Trim();
 
-            bool groupAlreadyExists = _context.Groups
-                .Any(g => g.Id != id
-                       && g.Name.ToLower() == name.ToLower()
-                       && g.School == teacherSchool);
+            string teacherSchool =
+                "Roskilde Skole";
+
+            bool groupAlreadyExists =
+                _context.Groups.Any(group =>
+                    group.Id != id
+                    &&
+                    group.Name.ToLower() == name.ToLower()
+                    &&
+                    group.School == teacherSchool
+                );
 
             if (groupAlreadyExists)
+            {
                 return BadRequest(new { message = "Der findes allerede en gruppe med dette navn på skolen" });
+            }
 
-            var existing = _context.Groups.Find(id);
+            Group? existing =
+                _context.Groups.Find(id);
+
             if (existing == null)
+            {
                 return NotFound(new { message = "Gruppen blev ikke fundet" });
+            }
 
-            existing.Name = name;
-            existing.School = teacherSchool;
+            existing.Name =
+                name;
+
+            existing.School =
+                teacherSchool;
+
+            existing.IsLocked =
+                false;
+
             _context.SaveChanges();
 
             return Ok(existing);
         }
 
-        // Kun lærer/user må slette grupper
+        // Sletter en gruppe og dens sessions og målinger.
         [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
-        public ActionResult<Group> Delete(int id)
+        public ActionResult Delete(int id)
         {
-            var group = _context.Groups.FirstOrDefault(g => g.Id == id);
+            Group? group =
+                _context.Groups.FirstOrDefault(groupItem => groupItem.Id == id);
 
             if (group == null)
-                return NotFound(new { message = "Gruppen blev ikke fundet" });
-
-            var sessions = _context.Sessions
-                .Where(s => s.GroupId == id)
-                .ToList();
-
-            foreach (var session in sessions)
             {
-                var measurements = _context.Measurements
-                    .Where(m => m.SessionId == session.Id)
+                return NotFound(new { message = "Gruppen blev ikke fundet" });
+            }
+
+            List<Session> sessions =
+                _context.Sessions
+                    .Where(session => session.GroupId == id)
                     .ToList();
+
+            foreach (Session session in sessions)
+            {
+                List<Measurement> measurements =
+                    _context.Measurements
+                        .Where(measurement => measurement.SessionId == session.Id)
+                        .ToList();
 
                 _context.Measurements.RemoveRange(measurements);
             }
@@ -146,48 +192,50 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
-        // Lærer kan se grupper med sessions og målinger
+        // Henter grupper med sessions og målinger.
         [Authorize(Roles = "admin")]
         [HttpGet("overview")]
         public IActionResult GetGroupsOverview()
         {
-            var overview = _context.Groups
-                .Select(g => new
-                {
-                    g.Id,
-                    g.Name,
-                    g.School,
-                    g.IsLocked,
-                    Sessions = _context.Sessions
-                        .Where(s => s.GroupId == g.Id)
-                        .Select(s => new
-                        {
-                            s.Id,
-                            s.CarType,
-                            s.RoadType,
-                            s.SpeedLimit,
-                            s.Status,
-                            s.CreatedAt,
-                            s.EndedAt,
-                            Measurements = _context.Measurements
-                                .Where(m => m.SessionId == s.Id)
-                                .OrderByDescending(m => m.CreatedAt)
-                                .Select(m => new
-                                {
-                                    m.Id,
-                                    m.MeasuredSpeed,
-                                    m.SimulatedSpeed,
-                                    m.Time,
-                                    m.Distance,
-                                    m.Co2,
-                                    m.Co2Saved,
-                                    m.CreatedAt
-                                })
-                                .ToList()
-                        })
-                        .ToList()
-                })
-                .ToList();
+            List<object> overview =
+                _context.Groups
+                    .Select(group => new
+                    {
+                        group.Id,
+                        group.Name,
+                        group.School,
+                        group.IsLocked,
+                        Sessions = _context.Sessions
+                            .Where(session => session.GroupId == group.Id)
+                            .Select(session => new
+                            {
+                                session.Id,
+                                session.CarType,
+                                session.RoadType,
+                                session.SpeedLimit,
+                                session.Status,
+                                session.CreatedAt,
+                                session.EndedAt,
+                                Measurements = _context.Measurements
+                                    .Where(measurement => measurement.SessionId == session.Id)
+                                    .OrderByDescending(measurement => measurement.CreatedAt)
+                                    .Select(measurement => new
+                                    {
+                                        measurement.Id,
+                                        measurement.MeasuredSpeed,
+                                        measurement.SimulatedSpeed,
+                                        measurement.Time,
+                                        measurement.Distance,
+                                        measurement.Co2,
+                                        measurement.Co2Saved,
+                                        measurement.CreatedAt
+                                    })
+                                    .ToList()
+                            })
+                            .ToList()
+                    })
+                    .Cast<object>()
+                    .ToList();
 
             return Ok(overview);
         }
