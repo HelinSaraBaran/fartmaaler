@@ -10,7 +10,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database connection
+// Database forbindelse
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -113,17 +113,32 @@ using (IServiceScope scope = app.Services.CreateScope())
             new Group
             {
                 Name = "Gruppe 1",
-                School = "Køge Skole",
+                School = "Roskilde Skole",
                 IsLocked = false
             },
             new Group
             {
                 Name = "Gruppe 2",
-                School = "Køge Skole",
+                School = "Roskilde Skole",
                 IsLocked = false
             }
         );
 
+        context.SaveChanges();
+    }
+
+    //  Roskilde Skole
+    List<Group> oldGroups = context.Groups
+        .Where(group => group.School == "Køge Skole")
+        .ToList();
+
+    for (int index = 0; index < oldGroups.Count; index++)
+    {
+        oldGroups[index].School = "Roskilde Skole";
+    }
+
+    if (oldGroups.Count > 0)
+    {
         context.SaveChanges();
     }
 
@@ -209,13 +224,13 @@ using (IServiceScope scope = app.Services.CreateScope())
     context.SaveChanges();
 }
 
-// Bruger Swagger også på Azure
+// Bruger Swagger ogsaa paa Azure
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// CORS skal ligge før authentication
+// CORS skal ligge for authentication
 app.UseCors("AllowFrontend");
 
 // Bruger authentication og authorization
