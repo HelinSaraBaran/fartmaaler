@@ -16,41 +16,70 @@ namespace FartmaalerAPI.Controllers
             _context = context;
         }
 
-        // GET /api/settings — hent alle indstillinger (alle kan se dem)
+        // Henter alle indstillinger.
         [HttpGet]
         public IActionResult GetAll()
         {
             try
             {
-                var settings = _context.Settings.ToList();
+                List<Settings> settings =
+                    _context.Settings.ToList();
+
                 return Ok(settings);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message = "Der opstod en fejl",
+                        error = exception.Message
+                    }
+                );
             }
         }
 
-        // PUT /api/settings/{key} — opdater en indstilling (kun admin)
+        // Opdaterer en indstilling.
+        // Frontend sender et Settings objekt med key og value.
         [Authorize(Roles = "admin")]
         [HttpPut("{key}")]
-        public IActionResult Update(string key, [FromBody] bool value)
+        public IActionResult Update(string key, [FromBody] Settings updatedSetting)
         {
             try
             {
-                var setting = _context.Settings.FirstOrDefault(s => s.Key.ToLower() == key.ToLower());
+                Settings? setting =
+                    _context.Settings.FirstOrDefault(
+                        settingItem => settingItem.Key.ToLower() == key.ToLower()
+                    );
 
                 if (setting == null)
-                    return NotFound(new { message = "Indstillingen blev ikke fundet" });
+                {
+                    return NotFound(
+                        new
+                        {
+                            message = "Indstillingen blev ikke fundet"
+                        }
+                    );
+                }
 
-                setting.Value = value;
+                setting.Value =
+                    updatedSetting.Value;
+
                 _context.SaveChanges();
 
                 return Ok(setting);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+                return StatusCode(
+                    500,
+                    new
+                    {
+                        message = "Der opstod en fejl",
+                        error = exception.Message
+                    }
+                );
             }
         }
     }
