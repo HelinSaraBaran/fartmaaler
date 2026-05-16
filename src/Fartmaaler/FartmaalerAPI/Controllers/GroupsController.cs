@@ -24,9 +24,24 @@ namespace FartmaalerAPI.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Group>> GetAll()
         {
-            return Ok(_repo.GetAll());
+            var groups = _repo.GetAll();
+
+            if (!groups.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen grupper fundet",
+                    groups = groups
+                });
+            }
+
+            return Ok(new
+            {
+                groups = groups
+            });
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Group> GetById(int id)
         {
@@ -125,7 +140,10 @@ namespace FartmaalerAPI.Controllers
             _context.Groups.Remove(group);
             _context.SaveChanges();
 
-            return Ok(group);
+            return Ok(new
+            {
+                message = "Gruppe og tilhørende sessions/målinger blev slettet"
+            });
         }
 
         // Lærer kan se grupper med sessions og målinger

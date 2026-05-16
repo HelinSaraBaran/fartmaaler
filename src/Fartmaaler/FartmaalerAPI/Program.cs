@@ -181,7 +181,7 @@ using (IServiceScope scope = app.Services.CreateScope())
             new SchoolLeaderboardMock
             {
                 SchoolName = "Roskilde Skole",
-                RoadType = "motorvej 130",
+                RoadType = "motorvej 110",
                 AverageScore = 18.3,
                 AverageCo2 = 14.1,
                 MeasurementCount = 29
@@ -189,7 +189,7 @@ using (IServiceScope scope = app.Services.CreateScope())
             new SchoolLeaderboardMock
             {
                 SchoolName = "Holbæk Skole",
-                RoadType = "motorvej 130",
+                RoadType = "motorvej 110",
                 AverageScore = 20.6,
                 AverageCo2 = 15.7,
                 MeasurementCount = 25

@@ -27,12 +27,29 @@ namespace FartmaalerAPI.Controllers
             _measurementService = measurementService;
         }
 
+        [Authorize(Roles = "admin")]
         [HttpGet]
-        public ActionResult<IEnumerable<Measurement>> GetAll()
+        public IActionResult GetAll()
         {
-            return Ok(_repo.GetAll());
+            var measurements = _repo.GetAll().ToList();
+
+            if (!measurements.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen målinger fundet"
+                });
+            }
+
+            return Ok(new
+            {
+                totalMeasurements = measurements.Count,
+                measurements = measurements
+            });
         }
 
+
+        [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Measurement> GetById(int id)
         {
@@ -145,6 +162,14 @@ namespace FartmaalerAPI.Controllers
                             : "Venter på måling"
                 })
                 .ToList();
+
+            if (!result.Any())
+            {
+                return Ok(new
+                {
+                    message = "Ingen grupper fundet"
+                });
+            }
 
             return Ok(result);
         }

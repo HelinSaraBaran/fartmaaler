@@ -17,7 +17,6 @@ namespace FartmaalerAPI.Controllers
             _leaderboardService = leaderboardService;
         }
 
-        // Admin henter klasse leaderboard
         [Authorize(Roles = "admin")]
         [HttpGet("admin/class")]
         public IActionResult GetAdminClassLeaderboard(string roadType)
@@ -25,15 +24,24 @@ namespace FartmaalerAPI.Controllers
             if (string.IsNullOrWhiteSpace(roadType))
                 return BadRequest(new { message = "Vejtype skal udfyldes" });
 
-            List<LeaderboardEntryResponse> result = _leaderboardService.GetClassLeaderboard(roadType);
+            List<LeaderboardEntryResponse> result =
+                _leaderboardService.GetClassLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" });
+            {
+                return Ok(new
+                {
+                    message = "Ingen afsluttede sessions for denne vejtype",
+                    leaderboard = result
+                });
+            }
 
-            return Ok(result);
+            return Ok(new
+            {
+                leaderboard = result
+            });
         }
 
-        // Admin henter skole leaderboard
         [Authorize(Roles = "admin")]
         [HttpGet("admin/school")]
         public IActionResult GetAdminSchoolLeaderboard(string roadType)
@@ -41,15 +49,24 @@ namespace FartmaalerAPI.Controllers
             if (string.IsNullOrWhiteSpace(roadType))
                 return BadRequest(new { message = "Vejtype skal udfyldes" });
 
-            List<SchoolLeaderboardResponse> result = _leaderboardService.GetSchoolLeaderboard(roadType);
+            List<SchoolLeaderboardResponse> result =
+                _leaderboardService.GetSchoolLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen skoledata for denne vejtype" });
+            {
+                return Ok(new
+                {
+                    message = "Ingen skoledata for denne vejtype",
+                    leaderboard = result
+                });
+            }
 
-            return Ok(result);
+            return Ok(new
+            {
+                leaderboard = result
+            });
         }
 
-        // Elev henter klasse leaderboard hvis det er slået til
         [HttpGet("student/class")]
         public IActionResult GetStudentClassLeaderboard(string roadType)
         {
@@ -59,15 +76,24 @@ namespace FartmaalerAPI.Controllers
             if (string.IsNullOrWhiteSpace(roadType))
                 return BadRequest(new { message = "Vejtype skal udfyldes" });
 
-            List<LeaderboardEntryResponse> result = _leaderboardService.GetClassLeaderboard(roadType);
+            List<LeaderboardEntryResponse> result =
+                _leaderboardService.GetClassLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen afsluttede sessions for denne vejtype" });
+            {
+                return Ok(new
+                {
+                    message = "Ingen afsluttede sessions for denne vejtype",
+                    leaderboard = result
+                });
+            }
 
-            return Ok(result);
+            return Ok(new
+            {
+                leaderboard = result
+            });
         }
 
-        // Elev henter skole leaderboard hvis det er slået til
         [HttpGet("student/school")]
         public IActionResult GetStudentSchoolLeaderboard(string roadType)
         {
@@ -77,15 +103,24 @@ namespace FartmaalerAPI.Controllers
             if (string.IsNullOrWhiteSpace(roadType))
                 return BadRequest(new { message = "Vejtype skal udfyldes" });
 
-            List<SchoolLeaderboardResponse> result = _leaderboardService.GetSchoolLeaderboard(roadType);
+            List<SchoolLeaderboardResponse> result =
+                _leaderboardService.GetSchoolLeaderboard(roadType);
 
             if (!result.Any())
-                return NotFound(new { message = "Ingen skoledata for denne vejtype" });
+            {
+                return Ok(new
+                {
+                    message = "Ingen skoledata for denne vejtype",
+                    leaderboard = result
+                });
+            }
 
-            return Ok(result);
+            return Ok(new
+            {
+                leaderboard = result
+            });
         }
 
-        // Admin ser om leaderboard er slået til
         [Authorize(Roles = "admin")]
         [HttpGet("setting")]
         public IActionResult GetLeaderboardSetting()
@@ -95,7 +130,6 @@ namespace FartmaalerAPI.Controllers
             return Ok(new { isEnabled = isEnabled });
         }
 
-        // Admin slår leaderboard til eller fra
         [Authorize(Roles = "admin")]
         [HttpPut("setting")]
         public IActionResult UpdateLeaderboardSetting([FromBody] UpdateLeaderboardSettingRequest request)
