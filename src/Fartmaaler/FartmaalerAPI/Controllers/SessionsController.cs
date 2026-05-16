@@ -31,14 +31,16 @@ namespace FartmaalerAPI.Controllers
         [HttpGet]
         public IActionResult GetAll()
         {
-            var sessions = _repo.GetAll().ToList();
+            List<Session> sessions =
+                _repo.GetAll().ToList();
 
             if (!sessions.Any())
             {
                 return Ok(new
                 {
                     message = "Ingen sessions fundet",
-
+                    totalSessions = 0,
+                    sessions = new List<Session>()
                 });
             }
 
@@ -49,11 +51,13 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+
         [Authorize(Roles = "admin")]
         [HttpGet("{id}")]
         public ActionResult<Session> GetById(int id)
         {
-            Session? session = _repo.GetById(id);
+            Session? session =
+                _repo.GetById(id);
 
             if (session == null)
             {
@@ -62,6 +66,7 @@ namespace FartmaalerAPI.Controllers
 
             return Ok(session);
         }
+
 
         [HttpPost]
         public ActionResult<Session> Add([FromBody] StartSessionRequest request)
@@ -81,7 +86,8 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Vejtype er påkrævet" });
             }
 
-            string roadType = request.RoadType.Trim().ToLower();
+            string roadType =
+                request.RoadType.Trim().ToLower();
 
             if (roadType != "byzone 50" &&
                 roadType != "landevej 80" &&
@@ -90,8 +96,8 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Vejtypen er ikke gyldig" });
             }
 
-            Group? group = _context.Groups
-                .FirstOrDefault(group => group.Id == request.GroupId);
+            Group? group =
+                _context.Groups.FirstOrDefault(groupItem => groupItem.Id == request.GroupId);
 
             if (group == null)
             {
@@ -103,10 +109,11 @@ namespace FartmaalerAPI.Controllers
                 return BadRequest(new { message = "Gruppen er allerede i gang med en session" });
             }
 
-            Session? createdSession = _sessionService.StartSession(
-                request.GroupId,
-                request.CarType.Trim(),
-                roadType);
+            Session? createdSession =
+                _sessionService.StartSession(
+                    request.GroupId,
+                    request.CarType.Trim(),
+                    roadType);
 
             if (createdSession == null)
             {
@@ -119,11 +126,12 @@ namespace FartmaalerAPI.Controllers
                 createdSession);
         }
 
-        
+
         [HttpPut("{id}/end")]
         public ActionResult<object> EndSession(int id)
         {
-            Session? endedSession = _sessionService.EndSession(id);
+            Session? endedSession =
+                _sessionService.EndSession(id);
 
             if (endedSession == null)
             {
@@ -137,6 +145,7 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+
         [HttpGet("group/{groupId}/history")]
         public IActionResult GetHistoryByGroup(
             int groupId,
@@ -147,14 +156,15 @@ namespace FartmaalerAPI.Controllers
             string? sortBy,
             string? sortDirection)
         {
-            object? history = _sessionService.GetHistoryByGroup(
-                groupId,
-                carType,
-                roadType,
-                startDate,
-                endDate,
-                sortBy,
-                sortDirection);
+            object? history =
+                _sessionService.GetHistoryByGroup(
+                    groupId,
+                    carType,
+                    roadType,
+                    startDate,
+                    endDate,
+                    sortBy,
+                    sortDirection);
 
             if (history == null)
             {
@@ -164,11 +174,13 @@ namespace FartmaalerAPI.Controllers
             return Ok(history);
         }
 
+
         [Authorize(Roles = "admin")]
         [HttpPut("{id}")]
         public ActionResult<Session> Update(int id, Session session)
         {
-            Session? updated = _repo.Update(id, session);
+            Session? updated =
+                _repo.Update(id, session);
 
             if (updated == null)
             {
@@ -178,26 +190,28 @@ namespace FartmaalerAPI.Controllers
             return Ok(updated);
         }
 
+
         [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            Session? session = _context.Sessions
-                .FirstOrDefault(session => session.Id == id);
+            Session? session =
+                _context.Sessions.FirstOrDefault(sessionItem => sessionItem.Id == id);
 
             if (session == null)
             {
                 return NotFound(new { message = "Session blev ikke fundet" });
             }
 
-            List<Measurement> measurements = _context.Measurements
-                .Where(measurement => measurement.SessionId == id)
-                .ToList();
+            List<Measurement> measurements =
+                _context.Measurements
+                    .Where(measurement => measurement.SessionId == id)
+                    .ToList();
 
             _context.Measurements.RemoveRange(measurements);
 
-            Group? group = _context.Groups
-                .FirstOrDefault(group => group.Id == session.GroupId);
+            Group? group =
+                _context.Groups.FirstOrDefault(groupItem => groupItem.Id == session.GroupId);
 
             if (group != null)
             {
@@ -213,6 +227,7 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+
         [Authorize(Roles = "admin")]
         [HttpDelete("all")]
         public IActionResult DeleteAll()
@@ -222,9 +237,10 @@ namespace FartmaalerAPI.Controllers
                 _context.Measurements.RemoveRange(_context.Measurements);
                 _context.Sessions.RemoveRange(_context.Sessions);
 
-                List<Group> groups = _context.Groups
-                    .Where(group => group.IsLocked)
-                    .ToList();
+                List<Group> groups =
+                    _context.Groups
+                        .Where(group => group.IsLocked)
+                        .ToList();
 
                 foreach (Group group in groups)
                 {
@@ -235,11 +251,16 @@ namespace FartmaalerAPI.Controllers
 
                 return Ok(new { message = "Al historik er slettet" });
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+                return StatusCode(500, new
+                {
+                    message = "Der opstod en fejl",
+                    error = exception.Message
+                });
             }
         }
+
 
         [Authorize(Roles = "admin")]
         [HttpGet("class-summary")]
@@ -247,11 +268,22 @@ namespace FartmaalerAPI.Controllers
         {
             try
             {
-                List<Measurement> measurements = _context.Measurements.ToList();
+                List<Measurement> measurements =
+                    _context.Measurements.ToList();
 
                 if (!measurements.Any())
                 {
-                    return Ok(new { message = "Ingen data endnu", count = 0 });
+                    return Ok(new
+                    {
+                        message = "Ingen data endnu",
+                        count = 0,
+                        totalMeasurements = 0,
+                        averageSpeed = 0,
+                        averageCo2 = 0,
+                        averageDeviation = 0,
+                        averageScore = 0,
+                        totalSessions = _context.Sessions.Count()
+                    });
                 }
 
                 return Ok(new
@@ -264,9 +296,13 @@ namespace FartmaalerAPI.Controllers
                     TotalSessions = _context.Sessions.Count()
                 });
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+                return StatusCode(500, new
+                {
+                    message = "Der opstod en fejl",
+                    error = exception.Message
+                });
             }
         }
 
@@ -274,140 +310,216 @@ namespace FartmaalerAPI.Controllers
         [Authorize(Roles = "admin")]
         [HttpGet("admin")]
         public IActionResult GetAdminSessions(
-    string? sortBy = "date",
-    string? sortDirection = "desc",
-    string? carType = null,
-    string? roadType = null,
-    string? status = null,
-    DateTime? startDate = null,
-    DateTime? endDate = null,
-    string? groupName = null)
+            string? sortBy = "date",
+            string? sortDirection = "desc",
+            string? carType = null,
+            string? roadType = null,
+            string? status = null,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? groupName = null)
         {
-            var sessions = _context.Sessions
-                .Select(s => new
-                {
-                    SessionId = s.Id,
-                    GroupName = s.Group != null ? s.Group.Name : "Ukendt gruppe",
-                    Date = s.CreatedAt,
-                    CarType = s.CarType,
-                    RoadType = s.RoadType,
-                    Status = s.Status,
-
-                    MeasurementCount = _context.Measurements
-                        .Count(m => m.SessionId == s.Id),
-
-                    AverageSpeed = _context.Measurements
-                        .Where(m => m.SessionId == s.Id)
-                        .Average(m => (double?)m.SimulatedSpeed) ?? 0
-                })
-                .ToList();
-
+            List<AdminSessionResponse> sessions =
+                _context.Sessions
+                    .Select(session => new AdminSessionResponse
+                    {
+                        SessionId = session.Id,
+                        GroupName = session.Group != null ? session.Group.Name : "Ukendt gruppe",
+                        Date = session.CreatedAt,
+                        CarType = session.CarType,
+                        RoadType = session.RoadType,
+                        Status = session.Status,
+                        MeasurementCount = _context.Measurements.Count(measurement => measurement.SessionId == session.Id),
+                        AverageSpeed = _context.Measurements
+                            .Where(measurement => measurement.SessionId == session.Id)
+                            .Average(measurement => (double?)measurement.SimulatedSpeed) ?? 0
+                    })
+                    .ToList();
 
             if (!string.IsNullOrWhiteSpace(carType))
             {
-                sessions = sessions
-                    .Where(s => s.CarType.ToLower() == carType.ToLower())
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.CarType.ToLower() == carType.ToLower())
+                        .ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(roadType))
             {
-                sessions = sessions
-                    .Where(s => s.RoadType.ToLower() == roadType.ToLower())
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.RoadType.ToLower() == roadType.ToLower())
+                        .ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(status))
             {
-                sessions = sessions
-                    .Where(s => s.Status.ToLower() == status.ToLower())
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.Status.ToLower() == status.ToLower())
+                        .ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(groupName))
             {
-                sessions = sessions
-                    .Where(s => s.GroupName.ToLower().Contains(groupName.ToLower()))
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.GroupName.ToLower().Contains(groupName.ToLower()))
+                        .ToList();
             }
 
             if (startDate.HasValue)
             {
-                sessions = sessions
-                    .Where(s => s.Date >= startDate.Value)
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.Date >= startDate.Value)
+                        .ToList();
             }
 
             if (endDate.HasValue)
             {
-                sessions = sessions
-                    .Where(s => s.Date <= endDate.Value)
-                    .ToList();
+                sessions =
+                    sessions
+                        .Where(session => session.Date <= endDate.Value)
+                        .ToList();
             }
 
+            bool descending =
+                sortDirection != null && sortDirection.ToLower() == "desc";
 
-            bool descending = sortDirection?.ToLower() == "desc";
+            string selectedSort =
+                "date";
 
-            sessions = sortBy?.ToLower() switch
+            if (!string.IsNullOrWhiteSpace(sortBy))
             {
-                "groupname" => descending
-                    ? sessions.OrderByDescending(s => s.GroupName).ToList()
-                    : sessions.OrderBy(s => s.GroupName).ToList(),
+                selectedSort =
+                    sortBy.ToLower();
+            }
 
-                "cartype" => descending
-                    ? sessions.OrderByDescending(s => s.CarType).ToList()
-                    : sessions.OrderBy(s => s.CarType).ToList(),
-
-                "roadtype" => descending
-                    ? sessions.OrderByDescending(s => s.RoadType).ToList()
-                    : sessions.OrderBy(s => s.RoadType).ToList(),
-
-                "speed" or "averagespeed" => descending
-                    ? sessions.OrderByDescending(s => s.AverageSpeed).ToList()
-                    : sessions.OrderBy(s => s.AverageSpeed).ToList(),
-
-                "measurements" or "measurementcount" => descending
-                    ? sessions.OrderByDescending(s => s.MeasurementCount).ToList()
-                    : sessions.OrderBy(s => s.MeasurementCount).ToList(),
-
-                _ => descending
-                    ? sessions.OrderByDescending(s => s.Date).ToList()
-                    : sessions.OrderBy(s => s.Date).ToList()
-            };
-
-            double classAverageSpeed = sessions.Any()
-                ? Math.Round(sessions.Average(s => s.AverageSpeed), 2)
-                : 0;
-
-            if (!sessions.Any())
+            if (selectedSort == "groupname")
             {
-                return Ok(new
-
+                if (descending)
                 {
-                    message = "Ingen sessions fundet",
-                 
-
-                });
+                    sessions =
+                        sessions.OrderByDescending(session => session.GroupName).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.GroupName).ToList();
+                }
+            }
+            else if (selectedSort == "cartype")
+            {
+                if (descending)
+                {
+                    sessions =
+                        sessions.OrderByDescending(session => session.CarType).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.CarType).ToList();
+                }
+            }
+            else if (selectedSort == "roadtype")
+            {
+                if (descending)
+                {
+                    sessions =
+                        sessions.OrderByDescending(session => session.RoadType).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.RoadType).ToList();
+                }
+            }
+            else if (selectedSort == "speed" || selectedSort == "averagespeed")
+            {
+                if (descending)
+                {
+                    sessions =
+                        sessions.OrderByDescending(session => session.AverageSpeed).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.AverageSpeed).ToList();
+                }
+            }
+            else if (selectedSort == "measurements" || selectedSort == "measurementcount")
+            {
+                if (descending)
+                {
+                    sessions =
+                        sessions.OrderByDescending(session => session.MeasurementCount).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.MeasurementCount).ToList();
+                }
+            }
+            else
+            {
+                if (descending)
+                {
+                    sessions =
+                        sessions.OrderByDescending(session => session.Date).ToList();
+                }
+                else
+                {
+                    sessions =
+                        sessions.OrderBy(session => session.Date).ToList();
+                }
             }
 
+            double classAverageSpeed =
+                0;
+
+            if (sessions.Any())
+            {
+                classAverageSpeed =
+                    Math.Round(sessions.Average(session => session.AverageSpeed), 2);
+            }
 
             return Ok(new
             {
-               
+                Message = sessions.Any() ? "Sessions fundet" : "Ingen sessions fundet",
                 ClassAverageSpeed = classAverageSpeed,
                 TotalSessions = sessions.Count,
-                Sessions = sessions.Select(s => new
+                Sessions = sessions.Select(session => new
                 {
-                    s.SessionId,
-                    s.GroupName,
-                    s.Date,
-                    s.CarType,
-                    s.RoadType,
-                    s.Status,
-                    s.MeasurementCount,
-                    AverageSpeed = Math.Round(s.AverageSpeed, 2)
-                })
+                    session.SessionId,
+                    session.GroupName,
+                    session.Date,
+                    session.CarType,
+                    session.RoadType,
+                    session.Status,
+                    session.MeasurementCount,
+                    AverageSpeed = Math.Round(session.AverageSpeed, 2)
+                }).ToList()
             });
         }
+    }
+
+    public class AdminSessionResponse
+    {
+        public int SessionId { get; set; }
+
+        public string GroupName { get; set; } = "";
+
+        public DateTime Date { get; set; }
+
+        public string CarType { get; set; } = "";
+
+        public string RoadType { get; set; } = "";
+
+        public string Status { get; set; } = "";
+
+        public int MeasurementCount { get; set; }
+
+        public double AverageSpeed { get; set; }
     }
 }
