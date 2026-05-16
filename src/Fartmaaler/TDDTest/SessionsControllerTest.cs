@@ -80,26 +80,32 @@ namespace TDDTest
         [Fact]
         public void GetAll_WhenNoSessionsExist_ReturnsOkWithEmptyList()
         {
-            ActionResult<IEnumerable<Session>> result =
+            // Act - henter alle sessions
+            IActionResult result =
                 _controller.GetAll();
 
+            // Assert - tjekker at controlleren returnerer OK
             OkObjectResult okResult =
-                Assert.IsType<OkObjectResult>(result.Result);
+                Assert.IsType<OkObjectResult>(result);
 
+            // Assert - tjekker at værdien er en liste af sessions
             IEnumerable<Session> sessions =
                 Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
 
+            // Assert - listen skal være tom
             Assert.Empty(sessions);
         }
 
         [Fact]
         public void GetAll_WhenSessionsExist_ReturnsOkWithAllSessions()
         {
+            // Arrange - opretter en gruppe
             Group group = CreateGroup();
 
             _context.Groups.Add(group);
             _context.SaveChanges();
 
+            // Arrange - opretter tre sessions til gruppen
             _context.Sessions.AddRange(
                 CreateSession(group.Id),
                 CreateSession(group.Id),
@@ -107,15 +113,19 @@ namespace TDDTest
 
             _context.SaveChanges();
 
-            ActionResult<IEnumerable<Session>> result =
+            // Act - henter alle sessions
+            IActionResult result =
                 _controller.GetAll();
 
+            // Assert - tjekker at controlleren returnerer OK
             OkObjectResult okResult =
-                Assert.IsType<OkObjectResult>(result.Result);
+                Assert.IsType<OkObjectResult>(result);
 
+            // Assert - tjekker at værdien er en liste af sessions
             IEnumerable<Session> sessions =
                 Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
 
+            // Assert - der skal være tre sessions
             Assert.Equal(3, sessions.Count());
         }
 
@@ -335,19 +345,21 @@ namespace TDDTest
             _context.Sessions.Add(session);
             _context.SaveChanges();
 
-            ActionResult<Session> result =
+            // Delete returnerer IActionResult, ikke ActionResult<Session>
+            IActionResult result =
                 _controller.Delete(session.Id);
 
-            Assert.IsType<OkObjectResult>(result.Result);
+            Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
         public void Delete_WhenSessionDoesNotExist_ReturnsNotFound()
         {
-            ActionResult<Session> result =
+            // Delete returnerer IActionResult, ikke ActionResult<Session>
+            IActionResult result =
                 _controller.Delete(999);
 
-            Assert.IsType<NotFoundObjectResult>(result.Result);
+            Assert.IsType<NotFoundObjectResult>(result);
         }
 
         [Fact]

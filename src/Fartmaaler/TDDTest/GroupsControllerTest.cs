@@ -1,17 +1,16 @@
 ﻿using System;
-using System.Linq;
 using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace TDDTest
 {
-    // Tester GroupsController, så vi ved at endpoints og delete-logik virker korrekt
-    // Testene bruger en InMemory database, så vi ikke rammer den rigtige database
+    // Tester GroupsController, så vi ved at endpoints og delete-logik virker korrekt.
+    // Testene bruger en InMemory database, så vi ikke rammer den rigtige database.
     public class GroupsControllerTest : IDisposable
     {
         // Test database context
@@ -27,7 +26,7 @@ namespace TDDTest
         public GroupsControllerTest()
         {
             // Opretter en unik InMemory database til hver test
-            var options = new DbContextOptionsBuilder<AppDbContext>()
+            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
@@ -53,7 +52,7 @@ namespace TDDTest
         public void GetById_WhenNotExists_ReturnsNotFound()
         {
             // Act - forsøger at hente en gruppe der ikke findes
-            var result = _controller.GetById(999);
+            ActionResult<Group> result = _controller.GetById(999);
 
             // Assert - tjekker at vi får NotFound
             Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -67,7 +66,7 @@ namespace TDDTest
         public void Delete_WhenGroupHasSessionsAndMeasurements_DeletesEverything()
         {
             // Arrange - opretter en gruppe
-            var group = new Group
+            Group group = new Group
             {
                 Name = "Test Group",
                 School = "Test School",
@@ -78,7 +77,7 @@ namespace TDDTest
             _context.SaveChanges();
 
             // Arrange - opretter en session til gruppen
-            var session = new Session
+            Session session = new Session
             {
                 GroupId = group.Id,
                 CarType = "Toy car",
@@ -94,7 +93,7 @@ namespace TDDTest
             _context.SaveChanges();
 
             // Arrange - opretter en measurement til sessionen
-            var measurement = new Measurement
+            Measurement measurement = new Measurement
             {
                 SessionId = session.Id,
                 MeasuredSpeed = 40,
@@ -110,10 +109,10 @@ namespace TDDTest
             _context.SaveChanges();
 
             // Act - sletter gruppen via controller
-            var result = _controller.Delete(group.Id);
+            ActionResult result = _controller.Delete(group.Id);
 
             // Assert - tjekker at vi får OK response
-            Assert.IsType<OkObjectResult>(result.Result);
+            Assert.IsType<OkObjectResult>(result);
 
             // Assert - tjekker at alle data er slettet
             Assert.Empty(_context.Groups);
