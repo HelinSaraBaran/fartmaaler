@@ -9,7 +9,7 @@ namespace FartmaalerAPI.Services
     {
         private readonly AppDbContext _context;
 
-        private const string OwnSchoolName = "Køge Skole";
+        private const string OwnSchoolName = "Roskilde Skole";
 
         public LeaderboardService(AppDbContext context)
         {
