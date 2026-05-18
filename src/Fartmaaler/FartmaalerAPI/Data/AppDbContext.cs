@@ -30,5 +30,7 @@ namespace FartmaalerAPI.Data
 
         // Globale system indstillinger
         public DbSet<Settings> Settings { get; set; }
+
+        public DbSet<FunFact> FunFacts { get; set; }
     }
 }

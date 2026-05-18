@@ -40,7 +40,7 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
@@ -91,7 +91,8 @@ var app = builder.Build();
 // Seeder standard data
 using (IServiceScope scope = app.Services.CreateScope())
 {
-    AppDbContext context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    AppDbContext context =
+        scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     // Seeder admin bruger
     if (!context.Users.Any())
@@ -127,14 +128,16 @@ using (IServiceScope scope = app.Services.CreateScope())
         context.SaveChanges();
     }
 
-    //  Roskilde Skole
-    List<Group> oldGroups = context.Groups
-        .Where(group => group.School == "Køge Skole")
-        .ToList();
+    // Retter gamle grupper fra Køge Skole til Roskilde Skole
+    List<Group> oldGroups =
+        context.Groups
+            .Where(group => group.School == "Køge Skole")
+            .ToList();
 
     for (int index = 0; index < oldGroups.Count; index++)
     {
-        oldGroups[index].School = "Roskilde Skole";
+        oldGroups[index].School =
+            "Roskilde Skole";
     }
 
     if (oldGroups.Count > 0)
@@ -200,20 +203,25 @@ using (IServiceScope scope = app.Services.CreateScope())
     }
 
     // Seeder globale settings
-    List<Settings> requiredSettings = new List<Settings>
-    {
-        new Settings { Key = "TTS", Value = true },
-        new Settings { Key = "BipLyd", Value = true },
-        new Settings { Key = "FunFacts", Value = true },
-        new Settings { Key = "TTSFunFact", Value = true },
-        new Settings { Key = "Leaderboard", Value = true },
-        new Settings { Key = "VisuelFeedback", Value = true }
-    };
+    List<Settings> requiredSettings =
+        new List<Settings>
+        {
+            new Settings { Key = "TTS", Value = true },
+            new Settings { Key = "BipLyd", Value = true },
+            new Settings { Key = "FunFacts", Value = true },
+            new Settings { Key = "TTSFunFact", Value = true },
+            new Settings { Key = "Leaderboard", Value = true },
+            new Settings { Key = "VisuelFeedback", Value = true }
+        };
 
     foreach (Settings requiredSetting in requiredSettings)
     {
-        bool settingExists = context.Settings
-            .Any(setting => setting.Key.ToLower() == requiredSetting.Key.ToLower());
+        bool settingExists =
+            context.Settings.Any(
+                setting =>
+                    setting.Key.ToLower() ==
+                    requiredSetting.Key.ToLower()
+            );
 
         if (!settingExists)
         {
@@ -222,15 +230,64 @@ using (IServiceScope scope = app.Services.CreateScope())
     }
 
     context.SaveChanges();
+
+    // Seeder fun facts til database
+    if (!context.FunFacts.Any())
+    {
+        context.FunFacts.AddRange(
+            new FunFact
+            {
+                Text = "Cykling og gang udleder 0 gram CO₂ under selve turen. Hvis du cykler i stedet for at tage bilen på korte ture, sparer du derfor bilens direkte udledning."
+            },
+            new FunFact
+            {
+                Text = "Transport står for cirka en fjerdedel af EU’s samlede drivhusgasudledning. Derfor betyder vores transportvaner meget for klimaet."
+            },
+            new FunFact
+            {
+                Text = "Hvis du vælger cykel eller gang én dag om ugen i stedet for bilen, kan det være med til at reducere din transportudledning over tid."
+            },
+            new FunFact
+            {
+                Text = "Jævn kørsel kan bruge mindre energi end hårde accelerationer og pludselige opbremsninger. Derfor handler bæredygtig kørsel også om kørestil."
+            },
+            new FunFact
+            {
+                Text = "Jo hurtigere en bil kører, jo mere energi skal den bruge på at overvinde luftmodstand. Derfor kan meget høj fart øge energiforbruget."
+            },
+            new FunFact
+            {
+                Text = "Hvis en biltur udleder omkring 150 gram CO₂ pr. kilometer som et simpelt estimat, vil en cykeltur på 5 km spare omkring 750 gram CO₂ sammenlignet med bilen."
+            },
+            new FunFact
+            {
+                Text = "Hvis du undgår 10 korte bilture på 5 km, og bilen udleder cirka 150 gram CO₂ pr. kilometer, svarer det til omkring 7,5 kg CO₂ sparet."
+            },
+            new FunFact
+            {
+                Text = "Hvis du sparer penge ved at tage bilen færre gange, kan de penge over tid bruges på noget andet. En dyr telefon som en iPhone Pro Max kan koste omkring 10.000-14.000 kr. afhængigt af model og lagerplads."
+            },
+            new FunFact
+            {
+                Text = "Små valg tæller: én kort biltur virker lille, men mange korte ture hver uge kan blive til meget CO₂ over et helt år."
+            },
+            new FunFact
+            {
+                Text = "Bæredygtig transport handler ikke kun om at køre langsomt. Det handler også om at vælge det rigtige transportmiddel til turen."
+            }
+        );
+
+        context.SaveChanges();
+    }
 }
 
-// Bruger Swagger ogsaa paa Azure
+// Bruger Swagger også på Azure
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// CORS skal ligge for authentication
+// CORS skal ligge før authentication
 app.UseCors("AllowFrontend");
 
 // Bruger authentication og authorization

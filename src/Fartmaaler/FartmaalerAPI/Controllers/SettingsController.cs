@@ -17,6 +17,7 @@ namespace FartmaalerAPI.Controllers
         }
 
         // Henter alle indstillinger.
+        // Elever og frontend må gerne læse indstillingerne.
         [HttpGet]
         public IActionResult GetAll()
         {
@@ -40,9 +41,9 @@ namespace FartmaalerAPI.Controllers
             }
         }
 
-        // Opdaterer en indstilling.
-        // Frontend sender et Settings objekt med key og value.
-        [Authorize(Roles = "admin")]
+        // Opdaterer en global indstilling.
+        // Både admin og teacher må ændre indstillinger.
+        [Authorize(Roles = "admin,teacher,Teacher")]
         [HttpPut("{key}")]
         public IActionResult Update(string key, [FromBody] Settings updatedSetting)
         {
