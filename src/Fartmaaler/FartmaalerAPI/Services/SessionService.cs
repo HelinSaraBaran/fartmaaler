@@ -107,13 +107,13 @@ namespace FartmaalerAPI.Services
 
         // Henter historik for en bestemt gruppe med filter og sortering
         public object? GetHistoryByGroup(
-            int groupId,
-            string? carType,
-            string? roadType,
-            DateTime? startDate,
-            DateTime? endDate,
-            string? sortBy,
-            string? sortDirection)
+    int groupId,
+    string? carType,
+    string? roadType,
+    DateTime? startDate,
+    DateTime? endDate,
+    string? sortBy,
+    string? sortDirection)
         {
             Group? group = _context.Groups.FirstOrDefault(group => group.Id == groupId);
 
@@ -126,110 +126,226 @@ namespace FartmaalerAPI.Services
                 .Where(session => session.GroupId == groupId)
                 .ToList();
 
-            // Filtrerer på biltype
+            // Filtrering på biltype
             if (!string.IsNullOrWhiteSpace(carType))
             {
                 sessions = sessions
-                    .Where(session => session.CarType.ToLower() == carType.ToLower())
+                    .Where(session =>
+                        session.CarType.ToLower() ==
+                        carType.ToLower())
                     .ToList();
             }
 
-            // Filtrerer på vejtype
+            // Filtrering på vejtype
             if (!string.IsNullOrWhiteSpace(roadType))
             {
                 sessions = sessions
-                    .Where(session => session.RoadType.ToLower() == roadType.ToLower())
+                    .Where(session =>
+                        session.RoadType.ToLower() ==
+                        roadType.ToLower())
                     .ToList();
             }
 
-            // Filtrerer fra dato
+            // Filtrering fra dato
             if (startDate.HasValue)
             {
                 sessions = sessions
-                    .Where(session => session.CreatedAt >= startDate.Value)
+                    .Where(session =>
+                        session.CreatedAt >= startDate.Value)
                     .ToList();
             }
 
-            // Filtrerer til dato
+            // Filtrering til dato
             if (endDate.HasValue)
             {
                 sessions = sessions
-                    .Where(session => session.CreatedAt <= endDate.Value)
+                    .Where(session =>
+                        session.CreatedAt <= endDate.Value)
                     .ToList();
             }
 
             var history = sessions
-                .Select(session => new
+                .Select(session =>
                 {
-                    session.Id,
-                    GroupName = group.Name,
-                    session.CarType,
-                    session.RoadType,
-                    session.SpeedLimit,
-                    session.Status,
-                    session.CreatedAt,
-                    session.EndedAt,
+                    List<Measurement> measurements =
+                        _context.Measurements
+                            .Where(measurement =>
+                                measurement.SessionId == session.Id)
+                            .ToList();
 
-                    // Antal målinger i sessionen
-                    MeasurementCount = _context.Measurements
-                        .Count(measurement => measurement.SessionId == session.Id),
+                    double averageSpeed = 0;
+                    double averageCo2 = 0;
+                    double averageTime = 0;
+                    double totalCo2Saved = 0;
+                    double score = 0;
 
-                    // Gennemsnitshastighed
-                    AverageSpeed = _context.Measurements
-                        .Where(measurement => measurement.SessionId == session.Id)
-                        .Average(measurement => (double?)measurement.SimulatedSpeed) ?? 0,
+                    if (measurements.Count > 0)
+                    {
+                        averageSpeed =
+                            measurements.Average(measurement =>
+                                measurement.SimulatedSpeed);
 
-                    // Gennemsnitlig CO2
-                    AverageCo2 = _context.Measurements
-                        .Where(measurement => measurement.SessionId == session.Id)
-                        .Average(measurement => (double?)measurement.Co2) ?? 0,
+                        averageCo2 =
+                            measurements.Average(measurement =>
+                                measurement.Co2);
 
-                    // Gennemsnitlig tid
-                    AverageTime = _context.Measurements
-                        .Where(measurement => measurement.SessionId == session.Id)
-                        .Average(measurement => (double?)measurement.Time) ?? 0,
+                        averageTime =
+                            measurements.Average(measurement =>
+                                measurement.Time);
 
-                    // Samlet CO2 besparelse
-                    TotalCo2Saved = _context.Measurements
-                        .Where(measurement => measurement.SessionId == session.Id)
-                        .Sum(measurement => (double?)measurement.Co2Saved) ?? 0
+                        totalCo2Saved =
+                            measurements.Sum(measurement =>
+                                measurement.Co2Saved);
+
+                        score =
+                            measurements.Average(measurement =>
+                                Math.Abs(
+                                    measurement.SimulatedSpeed -
+                                    measurement.SpeedLimit
+                                ) + measurement.Co2);
+                    }
+
+                    return new
+                    {
+                        session.Id,
+
+                        GroupName = group.Name,
+
+                        session.CarType,
+                        session.RoadType,
+                        session.SpeedLimit,
+                        session.Status,
+
+                        Date = session.CreatedAt,
+
+                        session.CreatedAt,
+                        session.EndedAt,
+
+                        MeasurementCount = measurements.Count,
+
+                        AverageSpeed =
+                            Math.Round(averageSpeed, 2),
+
+                        AverageCo2 =
+                            Math.Round(averageCo2, 2),
+
+                        AverageTime =
+                            Math.Round(averageTime, 2),
+
+                        TotalCo2Saved =
+                            Math.Round(totalCo2Saved, 2),
+
+                        Co2 =
+                            Math.Round(averageCo2, 2),
+
+                        Score =
+                            Math.Round(score, 2),
+
+                        Measurements =
+                            measurements.Select(measurement => new
+                            {
+                                measurement.Id,
+                                measurement.SessionId,
+
+                                measurement.Time,
+                                measurement.Distance,
+
+                                Speed =
+                                    Math.Round(
+                                        measurement.SimulatedSpeed,
+                                        2
+                                    ),
+
+                                measurement.SimulatedSpeed,
+                                measurement.SpeedLimit,
+
+                                measurement.Co2,
+                                measurement.Co2Saved,
+
+                                Score =
+                                    Math.Round(
+                                        Math.Abs(
+                                            measurement.SimulatedSpeed -
+                                            measurement.SpeedLimit
+                                        ) + measurement.Co2,
+                                        2
+                                    )
+                            })
+                            .ToList()
+                    };
                 })
                 .ToList();
 
-            bool descending = sortDirection?.ToLower() == "desc";
+            bool descending =
+                sortDirection?.ToLower() == "desc";
 
-            // Sorterer historikken
+            // Sortering
             if (!string.IsNullOrWhiteSpace(sortBy))
             {
-                if (sortBy.ToLower() == "co2")
+                if (
+                    sortBy.ToLower() == "co2" ||
+                    sortBy.ToLower() == "bestco2"
+                )
                 {
                     history = descending
-                        ? history.OrderByDescending(item => item.AverageCo2).ToList()
-                        : history.OrderBy(item => item.AverageCo2).ToList();
+                        ? history.OrderByDescending(item =>
+                            item.AverageCo2).ToList()
+                        : history.OrderBy(item =>
+                            item.AverageCo2).ToList();
                 }
-                else if (sortBy.ToLower() == "speed")
+
+                else if (
+                    sortBy.ToLower() == "speed" ||
+                    sortBy.ToLower() == "speedhigh"
+                )
                 {
                     history = descending
-                        ? history.OrderByDescending(item => item.AverageSpeed).ToList()
-                        : history.OrderBy(item => item.AverageSpeed).ToList();
+                        ? history.OrderByDescending(item =>
+                            item.AverageSpeed).ToList()
+                        : history.OrderBy(item =>
+                            item.AverageSpeed).ToList();
                 }
-                else if (sortBy.ToLower() == "time")
+
+                else if (sortBy.ToLower() == "speedlow")
                 {
-                    history = descending
-                        ? history.OrderByDescending(item => item.AverageTime).ToList()
-                        : history.OrderBy(item => item.AverageTime).ToList();
+                    history = history
+                        .OrderBy(item =>
+                            item.AverageSpeed)
+                        .ToList();
                 }
+
+                else if (
+                    sortBy.ToLower() == "time" ||
+                    sortBy.ToLower() == "timelow"
+                )
+                {
+                    history = history
+                        .OrderBy(item =>
+                            item.AverageTime)
+                        .ToList();
+                }
+
+                else if (sortBy.ToLower() == "score")
+                {
+                    history = history
+                        .OrderBy(item =>
+                            item.Score)
+                        .ToList();
+                }
+
                 else
                 {
                     history = history
-                        .OrderByDescending(item => item.CreatedAt)
+                        .OrderByDescending(item =>
+                            item.CreatedAt)
                         .ToList();
                 }
             }
             else
             {
                 history = history
-                    .OrderByDescending(item => item.CreatedAt)
+                    .OrderByDescending(item =>
+                        item.CreatedAt)
                     .ToList();
             }
 
