@@ -33,10 +33,10 @@ namespace FartmaalerAPI.Services
         {
             return roadType?.ToLower() switch
             {
-                "byzone 50" => 10,
-                "landevej 80" => 15,
-                "motorvej 110" => 20,
-                _ => 10
+                "byzone 50" => 2,
+                "landevej 80" => 3,
+                "motorvej 110" => 4,
+                _ => 2
             };
         }
 
