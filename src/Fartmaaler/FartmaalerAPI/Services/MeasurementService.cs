@@ -49,8 +49,16 @@ namespace FartmaalerAPI.Services
             double measuredSpeedKmh = speedMetersPerSecond * 3.6;
 
             // User story 9: målt hastighed ganges med sessionens scaling factor
-            double simulatedSpeedKmh = measuredSpeedKmh * session.ScalingFactor;
+            double scalingFactor = session.RoadType?.ToLower() switch
+            {
+                "byzone 50" => 2,
+                "landevej 80" => 3,
+                "motorvej 110" => 4,
+                _ => session.ScalingFactor
+            };
 
+            double simulatedSpeedKmh =
+                measuredSpeedKmh * scalingFactor;
             string status;
 
             if (simulatedSpeedKmh > session.SpeedLimit)
