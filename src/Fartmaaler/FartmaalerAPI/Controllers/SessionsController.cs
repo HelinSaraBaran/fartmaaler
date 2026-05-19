@@ -306,6 +306,20 @@ namespace FartmaalerAPI.Controllers
             }
         }
 
+        [HttpGet("active/latest")]
+        public IActionResult GetLatestActiveSession()
+        {
+            var session = _context.Sessions
+                .Where(s => s.Status == "Active")
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefault();
+
+            if (session == null)
+                return NotFound(new { message = "Ingen aktiv session fundet" });
+
+            return Ok(session);
+        }
+
 
         [Authorize(Roles = "admin")]
         [HttpGet("admin")]
