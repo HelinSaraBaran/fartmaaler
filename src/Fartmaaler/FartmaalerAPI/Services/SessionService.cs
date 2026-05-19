@@ -55,6 +55,16 @@ namespace FartmaalerAPI.Services
                 return null;
             }
 
+            var activeSessions = _context.Sessions
+            .Where(session => session.Status == "Active")
+            .ToList();
+
+            foreach (Session activeSession in activeSessions)
+            {
+                activeSession.Status = "Ended";
+                activeSession.EndedAt = DateTime.Now;
+            }
+
             Session session = new Session
             {
                 GroupId = groupId,
