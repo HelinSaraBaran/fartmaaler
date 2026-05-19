@@ -1,4 +1,4 @@
-name: Build and deploy ASP.Net Core app to Azure Web App - fartmaaler
+name: Build and deploy ASP.Net Core app to Azure Web App - FaartmaalerV2
 
 on:
   push:
@@ -44,19 +44,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-          path: ./publish   # ← download into a named folder, not root
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DFA4436B811444B2A52B1C31BAF5C794 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_28117A5C8EC04FB6BB21B41771F1FE64 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_221FFC86F99C4B10B2FA09859B985603 }}
+          path: ./publish
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'fartmaaler'
+          app-name: 'FaartmaalerV2'
           slot-name: 'Production'
-          package: ./publish   # ← now points exactly at the published output
+          package: ./publish
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
