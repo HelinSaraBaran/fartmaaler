@@ -192,6 +192,38 @@ namespace FartmaalerAPI.Controllers
             });
         }
 
+        [Authorize(Roles = "admin")]
+        [HttpDelete("all")]
+        public IActionResult DeleteAllGroups()
+        {
+            try
+            {
+                // Slet alle measurements først
+                _context.Measurements.RemoveRange(_context.Measurements);
+
+                // Slet alle sessions
+                _context.Sessions.RemoveRange(_context.Sessions);
+
+                // Slet alle grupper
+                _context.Groups.RemoveRange(_context.Groups);
+
+                _context.SaveChanges();
+
+                return Ok(new
+                {
+                    message = "Alle grupper, sessions og målinger blev slettet"
+                });
+            }
+            catch (Exception exception)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Der opstod en fejl",
+                    error = exception.Message
+                });
+            }
+        }
+
         // Henter grupper med sessions og målinger.
         [Authorize(Roles = "admin")]
         [HttpGet("overview")]
