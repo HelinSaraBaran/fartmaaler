@@ -2,8 +2,7 @@ name: Build and deploy ASP.Net Core app to Azure Web App - FaartmaalerV2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -11,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - uses: actions/checkout@v4
 
@@ -21,16 +19,21 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build src/**/*.sln --configuration Release
+        run: dotnet build src/Fartmaaler --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish src/**/*.sln --configuration Release --output ./publish
+        run: dotnet publish src/Fartmaaler --configuration Release --output ./publish
+
+      - name: Zip artifact
+        run: |
+          cd ./publish
+          zip -r ../app.zip .
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ./publish
+          path: ./app.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -38,13 +41,12 @@ jobs:
     permissions:
       id-token: write
       contents: read
-
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-          path: ./publish
+          path: ./
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -54,9 +56,9 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'FaartmaalerV2'
           slot-name: 'Production'
-          package: ./publish
+          package: ./app.zip
+        
