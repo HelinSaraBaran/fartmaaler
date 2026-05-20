@@ -208,7 +208,8 @@ using (IServiceScope scope = app.Services.CreateScope())
         new Settings { Key = "FunFacts", Value = true },
         new Settings { Key = "TTSFunFact", Value = true },
         new Settings { Key = "Leaderboard", Value = true },
-        new Settings { Key = "VisuelFeedback", Value = true }
+        new Settings { Key = "VisuelFeedback", Value = true },
+        new Settings { Key = "TTSLanguage", Value = true }
     };
 
     foreach (Settings requiredSetting in requiredSettings)
