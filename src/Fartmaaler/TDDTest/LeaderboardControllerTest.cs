@@ -5,197 +5,193 @@ using FartmaalerAPI.Models;
 using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class LeaderboardControllerTest : IDisposable
+    public class LeaderboardControllerTests
     {
-        private readonly AppDbContext _context;
-        private readonly LeaderboardService _service;
-        private readonly LeaderboardController _controller;
-
-        // Constructoren kører før hver test
-        public LeaderboardControllerTest()
+        // Opretter fake in-memory database
+        private AppDbContext GetDbContext()
         {
-            DbContextOptions<AppDbContext> options =
-                new DbContextOptionsBuilder<AppDbContext>()
+            var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new AppDbContext(options);
-            _service = new LeaderboardService(_context);
-            _controller = new LeaderboardController(_service);
+            return new AppDbContext(options);
         }
 
-        // Rydder den falske database efter hver test
-        public void Dispose()
+        // Opretter controller med rigtig service og fake database
+        private LeaderboardController CreateController(AppDbContext context)
         {
-            _context.Dispose();
-        }
+            var service = new LeaderboardService(context);
 
-        // Opretter en testgruppe
-        private Group CreateGroup()
-        {
-            return new Group
-            {
-                Name = "Test Gruppe",
-                School = "Køge Skole",
-                IsLocked = false
-            };
-        }
-
-        // Opretter en afsluttet test session
-        private Session CreateSession(int groupId, string status = "Ended")
-        {
-            return new Session
-            {
-                GroupId = groupId,
-                CarType = "benzin lille",
-                RoadType = "byzone 50",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = status,
-                CreatedAt = DateTime.Now,
-                EndedAt = DateTime.Now
-            };
-        }
-
-        // Opretter en test måling
-        private Measurement CreateMeasurement(int sessionId)
-        {
-            return new Measurement
-            {
-                SessionId = sessionId,
-                Distance = 5,
-                Time = 1,
-                MeasuredSpeed = 18,
-                SimulatedSpeed = 50,
-                SpeedLimit = 50,
-                Status = "On limit",
-                Co2 = 5,
-                Co2Saved = 2,
-                CreatedAt = DateTime.Now
-            };
-        }
-
-        // Opretter leaderboard setting
-        private void CreateLeaderboardSetting(bool value)
-        {
-            Settings setting = new Settings
-            {
-                Key = "Leaderboard",
-                Value = value
-            };
-
-            _context.Settings.Add(setting);
-            _context.SaveChanges();
+            return new LeaderboardController(service);
         }
 
         [Fact]
-        public void GetAdminClassLeaderboard_WhenRoadTypeMissing_ReturnsBadRequest()
+        // Tester at admin class leaderboard returnerer BadRequest hvis vejtype mangler
+        public void GetAdminClassLeaderboard_ReturnsBadRequest_WhenRoadTypeIsMissing()
         {
-            IActionResult result = _controller.GetAdminClassLeaderboard("");
+            using var context = GetDbContext();
+            var controller = CreateController(context);
+
+            var result = controller.GetAdminClassLeaderboard("");
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
-        public void GetAdminClassLeaderboard_WhenNoData_ReturnsNotFound()
+        // Tester at admin class leaderboard returnerer Ok selvom listen er tom
+        public void GetAdminClassLeaderboard_ReturnsOk_WhenNoDataExists()
         {
-            IActionResult result = _controller.GetAdminClassLeaderboard("byzone 50");
+            using var context = GetDbContext();
+            var controller = CreateController(context);
 
-            Assert.IsType<NotFoundObjectResult>(result);
-        }
-
-        [Fact]
-        public void GetAdminClassLeaderboard_WhenDataExists_ReturnsOk()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            Session session = CreateSession(group.Id);
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            Measurement measurement = CreateMeasurement(session.Id);
-
-            _context.Measurements.Add(measurement);
-            _context.SaveChanges();
-
-            IActionResult result = _controller.GetAdminClassLeaderboard("byzone 50");
+            var result = controller.GetAdminClassLeaderboard("byzone 50");
 
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void GetAdminSchoolLeaderboard_WhenMockDataExists_ReturnsOk()
+        // Tester at admin school leaderboard returnerer BadRequest hvis vejtype mangler
+        public void GetAdminSchoolLeaderboard_ReturnsBadRequest_WhenRoadTypeIsMissing()
         {
-            SchoolLeaderboardMock mock = new SchoolLeaderboardMock
-            {
-                SchoolName = "Roskilde Skole",
-                RoadType = "byzone 50",
-                AverageScore = 10,
-                AverageCo2 = 5,
-                MeasurementCount = 20
-            };
+            using var context = GetDbContext();
+            var controller = CreateController(context);
 
-            _context.SchoolLeaderboardMocks.Add(mock);
-            _context.SaveChanges();
+            var result = controller.GetAdminSchoolLeaderboard("");
 
-            IActionResult result = _controller.GetAdminSchoolLeaderboard("byzone 50");
+            Assert.IsType<BadRequestObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at admin school leaderboard returnerer Ok selvom listen er tom
+        public void GetAdminSchoolLeaderboard_ReturnsOk_WhenNoDataExists()
+        {
+            using var context = GetDbContext();
+            var controller = CreateController(context);
+
+            var result = controller.GetAdminSchoolLeaderboard("byzone 50");
 
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void GetStudentClassLeaderboard_WhenLeaderboardDisabled_ReturnsForbid()
+        // Tester at student class leaderboard returnerer Forbid hvis leaderboard er slået fra
+        public void GetStudentClassLeaderboard_ReturnsForbid_WhenLeaderboardIsDisabled()
         {
-            CreateLeaderboardSetting(false);
+            using var context = GetDbContext();
+            var controller = CreateController(context);
 
-            IActionResult result = _controller.GetStudentClassLeaderboard("byzone 50");
+            var result = controller.GetStudentClassLeaderboard("byzone 50");
 
             Assert.IsType<ForbidResult>(result);
         }
 
         [Fact]
-        public void GetStudentSchoolLeaderboard_WhenLeaderboardEnabled_ReturnsOk()
+        // Tester at student school leaderboard returnerer Forbid hvis leaderboard er slået fra
+        public void GetStudentSchoolLeaderboard_ReturnsForbid_WhenLeaderboardIsDisabled()
         {
-            CreateLeaderboardSetting(true);
+            using var context = GetDbContext();
+            var controller = CreateController(context);
 
-            SchoolLeaderboardMock mock = new SchoolLeaderboardMock
+            var result = controller.GetStudentSchoolLeaderboard("byzone 50");
+
+            Assert.IsType<ForbidResult>(result);
+        }
+
+        [Fact]
+        // Tester at student class leaderboard returnerer BadRequest hvis vejtype mangler og leaderboard er slået til
+        public void GetStudentClassLeaderboard_ReturnsBadRequest_WhenRoadTypeIsMissing()
+        {
+            using var context = GetDbContext();
+
+            context.Settings.Add(new Settings
             {
-                SchoolName = "Roskilde Skole",
-                RoadType = "byzone 50",
-                AverageScore = 10,
-                AverageCo2 = 5,
-                MeasurementCount = 20
-            };
+                Id = 1,
+                Key = "Leaderboard",
+                Value = true
+            });
 
-            _context.SchoolLeaderboardMocks.Add(mock);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            IActionResult result = _controller.GetStudentSchoolLeaderboard("byzone 50");
+            var controller = CreateController(context);
+
+            var result = controller.GetStudentClassLeaderboard("");
+
+            Assert.IsType<BadRequestObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at student school leaderboard returnerer BadRequest hvis vejtype mangler og leaderboard er slået til
+        public void GetStudentSchoolLeaderboard_ReturnsBadRequest_WhenRoadTypeIsMissing()
+        {
+            using var context = GetDbContext();
+
+            context.Settings.Add(new Settings
+            {
+                Id = 1,
+                Key = "Leaderboard",
+                Value = true
+            });
+
+            context.SaveChanges();
+
+            var controller = CreateController(context);
+
+            var result = controller.GetStudentSchoolLeaderboard("");
+
+            Assert.IsType<BadRequestObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at GetLeaderboardSetting returnerer Ok
+        public void GetLeaderboardSetting_ReturnsOk()
+        {
+            using var context = GetDbContext();
+            var controller = CreateController(context);
+
+            var result = controller.GetLeaderboardSetting();
 
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void UpdateLeaderboardSetting_WhenCalled_ReturnsOk()
+        // Tester at UpdateLeaderboardSetting returnerer Ok
+        public void UpdateLeaderboardSetting_ReturnsOk()
         {
-            UpdateLeaderboardSettingRequest request =
-                new UpdateLeaderboardSettingRequest
-                {
-                    IsEnabled = true
-                };
+            using var context = GetDbContext();
+            var controller = CreateController(context);
 
-            IActionResult result = _controller.UpdateLeaderboardSetting(request);
+            var request = new UpdateLeaderboardSettingRequest
+            {
+                IsEnabled = true
+            };
+
+            var result = controller.UpdateLeaderboardSetting(request);
 
             Assert.IsType<OkObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at UpdateLeaderboardSetting opretter/ændrer setting til true
+        public void UpdateLeaderboardSetting_ChangesSettingValue()
+        {
+            using var context = GetDbContext();
+            var controller = CreateController(context);
+
+            var request = new UpdateLeaderboardSettingRequest
+            {
+                IsEnabled = true
+            };
+
+            var result = controller.UpdateLeaderboardSetting(request);
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var setting = Assert.IsType<Settings>(okResult.Value);
+
+            Assert.True(setting.Value);
         }
     }
 }

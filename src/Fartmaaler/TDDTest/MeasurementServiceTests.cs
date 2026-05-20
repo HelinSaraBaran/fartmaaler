@@ -1,172 +1,165 @@
-﻿using System;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FartmaalerAPI.Data;
+﻿using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using FartmaalerAPI.Services;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class MeasurementServiceTests : IDisposable
+    public class MeasurementServiceTests
     {
-        private readonly AppDbContext _context;
-        private readonly MeasurementsRepo _repo;
-        private readonly MeasurementService _service;
-
-        public MeasurementServiceTests()
+        private AppDbContext GetDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new AppDbContext(options);
-            _repo = new MeasurementsRepo(_context);
-            _service = new MeasurementService(_context, _repo);
-        }
-
-        public void Dispose()
-        {
-            _context.Dispose();
+            return new AppDbContext(options);
         }
 
         [Fact]
-        public void CreateMeasurement_ReturnsNull_WhenSessionIdInvalid()
+        public void CreateMeasurement_ReturnsNull_WhenSessionIdIsInvalid()
         {
-            // Arrange
-            int invalidSessionId = 0;
+            using var context = GetDbContext();
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
 
-            // Act
-            var result = _service.CreateMeasurement(invalidSessionId, 1);
+            var result = service.CreateMeasurement(0, 2);
 
-            // Assert
             Assert.Null(result);
         }
 
         [Fact]
-        public void CreateMeasurement_ReturnsNull_WhenTimeInvalid()
+        public void CreateMeasurement_ReturnsNull_WhenTimeIsInvalid()
         {
-            // Arrange
-            var session = new Session
+            using var context = GetDbContext();
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
+
+            var result = service.CreateMeasurement(1, 0);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void CreateMeasurement_ReturnsNull_WhenSessionDoesNotExist()
+        {
+            using var context = GetDbContext();
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
+
+            var result = service.CreateMeasurement(999, 2);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void CreateMeasurement_ReturnsNull_WhenSessionIsEnded()
+        {
+            using var context = GetDbContext();
+
+            context.Sessions.Add(new Session
             {
                 Id = 1,
-                GroupId = 1,
-                Group = new Group
-                {
-                    Id = 1,
-                    Name = "G",
-                    School = "S",
-                    IsLocked = false
-                },
-                CarType = "A",
-                RoadType = "R",
+                CarType = "benzin lille",
+                RoadType = "Byzone",
                 SpeedLimit = 50,
-                ScalingFactor = 1.0,
-                Status = "running",
-                CreatedAt = DateTime.UtcNow
-            };
+                ScalingFactor = 10,
+                Status = "Ended"
+            });
 
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            // Act
-            var result = _service.CreateMeasurement(1, 0);
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
 
-            // Assert
+            var result = service.CreateMeasurement(1, 2);
+
             Assert.Null(result);
         }
 
         [Fact]
-        public void CreateMeasurement_ReturnsNull_WhenSessionNotFound()
+        public void CreateMeasurement_CreatesMeasurement_WhenInputIsValid()
         {
-            // Arrange
-            // Ingen session oprettet
+            using var context = GetDbContext();
 
-            // Act
-            var result = _service.CreateMeasurement(999, 1);
-
-            // Assert
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public void CreateMeasurement_ReturnsNull_WhenSessionEnded()
-        {
-            // Arrange
-            var session = new Session
+            context.Sessions.Add(new Session
             {
-                Id = 10,
-                GroupId = 1,
-                Group = new Group
-                {
-                    Id = 1,
-                    Name = "G",
-                    School = "S",
-                    IsLocked = false
-                },
-                CarType = "A",
-                RoadType = "R",
+                Id = 1,
+                CarType = "benzin lille",
+                RoadType = "Byzone",
                 SpeedLimit = 50,
-                ScalingFactor = 1.0,
-                Status = "ended",
-                CreatedAt = DateTime.UtcNow,
-                EndedAt = DateTime.UtcNow
-            };
+                ScalingFactor = 10,
+                Status = "Active"
+            });
 
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            // Act
-            var result = _service.CreateMeasurement(10, 1);
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
 
-            // Assert
-            Assert.Null(result);
+            var result = service.CreateMeasurement(1, 2);
+
+            Assert.NotNull(result);
+            Assert.Equal(1, result.SessionId);
+            Assert.Equal(5.0, result.Distance);
+            Assert.Equal(2, result.Time);
+            Assert.Equal(9.0, result.MeasuredSpeed);
+            Assert.Equal(90.0, result.SimulatedSpeed);
+            Assert.Equal(50, result.SpeedLimit);
+            Assert.Equal("Too fast", result.Status);
         }
 
         [Fact]
-        public void CreateMeasurement_CreatesMeasurement_WithExpectedValues()
+        public void CreateMeasurement_SetsStatusUnderLimit_WhenSpeedIsBelowLimit()
         {
-            // Arrange
-            // Hvis tiden er 1 sekund bliver hastigheden 18 km/t
-            var session = new Session
+            using var context = GetDbContext();
+
+            context.Sessions.Add(new Session
             {
-                Id = 5,
-                GroupId = 1,
-                Group = new Group
-                {
-                    Id = 1,
-                    Name = "G",
-                    School = "S",
-                    IsLocked = false
-                },
-                CarType = "A",
-                RoadType = "R",
+                Id = 1,
+                CarType = "hybrid",
+                RoadType = "Byzone",
                 SpeedLimit = 50,
-                ScalingFactor = 1.0,
-                Status = "running",
-                CreatedAt = DateTime.UtcNow
-            };
+                ScalingFactor = 1,
+                Status = "Active"
+            });
 
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            // Act
-            var created = _service.CreateMeasurement(5, 1);
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
 
-            // Assert
-            Assert.NotNull(created);
-            Assert.Equal(5, created.SessionId);
-            Assert.Equal(5.0, created.Distance);
-            Assert.Equal(1, created.Time);
-            Assert.Equal(18.00, created.MeasuredSpeed);
-            Assert.Equal(18.00, created.SimulatedSpeed);
-            Assert.Equal(50, created.SpeedLimit);
-            Assert.Equal("Under limit", created.Status);
+            var result = service.CreateMeasurement(1, 2);
 
-            var fromDb = _context.Measurements.Find(created.Id);
+            Assert.NotNull(result);
+            Assert.Equal("Under limit", result.Status);
+        }
 
-            Assert.NotNull(fromDb);
+        [Fact]
+        public void CreateMeasurement_SavesMeasurementToDatabase()
+        {
+            using var context = GetDbContext();
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                CarType = "diesel",
+                RoadType = "Landevej",
+                SpeedLimit = 80,
+                ScalingFactor = 10,
+                Status = "Active"
+            });
+
+            context.SaveChanges();
+
+            var repo = new MeasurementsRepo(context);
+            var service = new MeasurementService(context, repo);
+
+            service.CreateMeasurement(1, 2);
+
+            Assert.Single(context.Measurements);
         }
     }
 }

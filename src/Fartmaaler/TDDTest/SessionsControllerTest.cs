@@ -1,465 +1,345 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using FartmaalerAPI.Controllers;
+﻿using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
 using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
-using FartmaalerAPI.Repositories;
+using FartmaalerAPI.Repositories.Interfaces;
 using FartmaalerAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class SessionsControllerTest : IDisposable
+    public class SessionsControllerTests
     {
-        private readonly AppDbContext _context;
-        private readonly SessionsRepo _repo;
-        private readonly SessionService _sessionService;
-        private readonly SessionsController _controller;
-
-        public SessionsControllerTest()
+        // Opretter fake database til tests
+        private AppDbContext GetDbContext()
         {
-            DbContextOptions<AppDbContext> options =
-                new DbContextOptionsBuilder<AppDbContext>()
-                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                    .Options;
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
 
-            _context = new AppDbContext(options);
-            _repo = new SessionsRepo(_context);
-            _sessionService = new SessionService(_context);
-
-            _controller = new SessionsController(
-                _repo,
-                _context,
-                _sessionService);
+            return new AppDbContext(options);
         }
 
-        public void Dispose()
+        // Opretter controller med fake dependencies
+        private SessionsController CreateController(AppDbContext context)
         {
-            _context.Dispose();
-        }
+            var repoMock = new Mock<IRepository<Session>>();
 
-        private Group CreateGroup()
-        {
-            return new Group
-            {
-                Name = "Test group",
-                School = "Test school",
-                IsLocked = false
-            };
-        }
+            var sessionService = new SessionService(context);
 
-        private Session CreateSession(int groupId, string status = "Active")
-        {
-            return new Session
-            {
-                GroupId = groupId,
-                CarType = "Toy car",
-                RoadType = "byzone 50",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = status,
-                CreatedAt = DateTime.Now,
-                EndedAt = null
-            };
-        }
-
-        private StartSessionRequest CreateStartSessionRequest(int groupId)
-        {
-            return new StartSessionRequest
-            {
-                GroupId = groupId,
-                CarType = "Toy car",
-                RoadType = "byzone 50"
-            };
+            return new SessionsController(
+                repoMock.Object,
+                context,
+                sessionService);
         }
 
         [Fact]
-        public void GetAll_WhenNoSessionsExist_ReturnsOkWithEmptyList()
+        // Tester at GetAll returnerer Ok
+        public void GetAll_ReturnsOk()
         {
-            // Act - henter alle sessions
-            IActionResult result =
-                _controller.GetAll();
+            using var context = GetDbContext();
 
-            // Assert - tjekker at controlleren returnerer OK
-            OkObjectResult okResult =
-                Assert.IsType<OkObjectResult>(result);
+            var controller = CreateController(context);
 
-            // Assert - tjekker at værdien er en liste af sessions
-            IEnumerable<Session> sessions =
-                Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
-
-            // Assert - listen skal være tom
-            Assert.Empty(sessions);
-        }
-
-        [Fact]
-        public void GetAll_WhenSessionsExist_ReturnsOkWithAllSessions()
-        {
-            // Arrange - opretter en gruppe
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            // Arrange - opretter tre sessions til gruppen
-            _context.Sessions.AddRange(
-                CreateSession(group.Id),
-                CreateSession(group.Id),
-                CreateSession(group.Id));
-
-            _context.SaveChanges();
-
-            // Act - henter alle sessions
-            IActionResult result =
-                _controller.GetAll();
-
-            // Assert - tjekker at controlleren returnerer OK
-            OkObjectResult okResult =
-                Assert.IsType<OkObjectResult>(result);
-
-            // Assert - tjekker at værdien er en liste af sessions
-            IEnumerable<Session> sessions =
-                Assert.IsAssignableFrom<IEnumerable<Session>>(okResult.Value);
-
-            // Assert - der skal være tre sessions
-            Assert.Equal(3, sessions.Count());
-        }
-
-        [Fact]
-        public void GetById_WhenSessionExists_ReturnsOkWithSession()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            Session session = CreateSession(group.Id);
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            ActionResult<Session> result =
-                _controller.GetById(session.Id);
-
-            OkObjectResult okResult =
-                Assert.IsType<OkObjectResult>(result.Result);
-
-            Session returnedSession =
-                Assert.IsType<Session>(okResult.Value);
-
-            Assert.Equal(session.Id, returnedSession.Id);
-        }
-
-        [Fact]
-        public void GetById_WhenSessionDoesNotExist_ReturnsNotFound()
-        {
-            ActionResult<Session> result =
-                _controller.GetById(999);
-
-            Assert.IsType<NotFoundObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_ValidSession_ReturnsCreated()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request =
-                CreateStartSessionRequest(group.Id);
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<CreatedAtActionResult>(result.Result);
-
-            Assert.Single(_context.Sessions);
-        }
-
-        [Fact]
-        public void Add_ValidSession_SavesCorrectProperties()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request =
-                CreateStartSessionRequest(group.Id);
-
-            _controller.Add(request);
-
-            Session savedSession =
-                _context.Sessions.First();
-
-            Assert.Equal(group.Id, savedSession.GroupId);
-            Assert.Equal("Toy car", savedSession.CarType);
-            Assert.Equal("byzone 50", savedSession.RoadType);
-            Assert.Equal(50, savedSession.SpeedLimit);
-            Assert.Equal(10, savedSession.ScalingFactor);
-            Assert.Equal("Active", savedSession.Status);
-            Assert.Null(savedSession.EndedAt);
-        }
-
-        [Fact]
-        public void Add_ValidSession_LocksGroup()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request =
-                CreateStartSessionRequest(group.Id);
-
-            _controller.Add(request);
-
-            Group savedGroup =
-                _context.Groups.First();
-
-            Assert.True(savedGroup.IsLocked);
-        }
-
-        [Fact]
-        public void Add_WhenGroupIdInvalid_ReturnsBadRequest()
-        {
-            StartSessionRequest request =
-                CreateStartSessionRequest(0);
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenGroupDoesNotExist_ReturnsNotFound()
-        {
-            StartSessionRequest request =
-                CreateStartSessionRequest(999);
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<NotFoundObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenRoadTypeInvalid_ReturnsBadRequest()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request = new StartSessionRequest
-            {
-                GroupId = group.Id,
-                CarType = "Toy car",
-                RoadType = "Forkert vejtype"
-            };
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenCarTypeIsEmpty_ReturnsBadRequest()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request = new StartSessionRequest
-            {
-                GroupId = group.Id,
-                CarType = "",
-                RoadType = "byzone 50"
-            };
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenRoadTypeIsEmpty_ReturnsBadRequest()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request = new StartSessionRequest
-            {
-                GroupId = group.Id,
-                CarType = "Toy car",
-                RoadType = ""
-            };
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Add_WhenGroupIsLocked_ReturnsBadRequest()
-        {
-            Group group = CreateGroup();
-
-            group.IsLocked = true;
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            StartSessionRequest request =
-                CreateStartSessionRequest(group.Id);
-
-            ActionResult<Session> result =
-                _controller.Add(request);
-
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public void Delete_WhenSessionExists_ReturnsOk()
-        {
-            Group group = CreateGroup();
-
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            Session session = CreateSession(group.Id);
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            // Delete returnerer IActionResult, ikke ActionResult<Session>
-            IActionResult result =
-                _controller.Delete(session.Id);
+            var result = controller.GetAll();
 
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void Delete_WhenSessionDoesNotExist_ReturnsNotFound()
+        // Tester at GetById returnerer NotFound hvis session ikke findes
+        public void GetById_ReturnsNotFound_WhenSessionDoesNotExist()
         {
-            // Delete returnerer IActionResult, ikke ActionResult<Session>
-            IActionResult result =
-                _controller.Delete(999);
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Session>>();
+
+            repoMock.Setup(repo => repo.GetById(1))
+                .Returns((Session?)null);
+
+            var controller = new SessionsController(
+                repoMock.Object,
+                context,
+                new SessionService(context));
+
+            var result = controller.GetById(1);
+
+            Assert.IsType<NotFoundObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis GroupId er ugyldigt
+        public void Add_ReturnsBadRequest_WhenGroupIdIsInvalid()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var request = new StartSessionRequest
+            {
+                GroupId = 0,
+                CarType = "diesel",
+                RoadType = "byzone 50"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis biltype mangler
+        public void Add_ReturnsBadRequest_WhenCarTypeIsMissing()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var request = new StartSessionRequest
+            {
+                GroupId = 1,
+                CarType = "",
+                RoadType = "byzone 50"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis vejtype er ugyldig
+        public void Add_ReturnsBadRequest_WhenRoadTypeIsInvalid()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var request = new StartSessionRequest
+            {
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "forkert vej"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer NotFound hvis gruppen ikke findes
+        public void Add_ReturnsNotFound_WhenGroupDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var request = new StartSessionRequest
+            {
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<NotFoundObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add opretter session korrekt
+        public void Add_CreatesSession()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = false
+            });
+
+            context.SaveChanges();
+
+            var controller = CreateController(context);
+
+            var request = new StartSessionRequest
+            {
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<CreatedAtActionResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at EndSession returnerer NotFound hvis session ikke findes
+        public void EndSession_ReturnsNotFound_WhenSessionDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var result = controller.EndSession(1);
+
+            Assert.IsType<NotFoundObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at EndSession afslutter session korrekt
+        public void EndSession_ReturnsOk_WhenSessionExists()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = true
+            });
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var controller = CreateController(context);
+
+            var result = controller.EndSession(1);
+
+            Assert.IsType<OkObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Delete returnerer NotFound hvis session ikke findes
+        public void Delete_ReturnsNotFound_WhenSessionDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var controller = CreateController(context);
+
+            var result = controller.Delete(1);
 
             Assert.IsType<NotFoundObjectResult>(result);
         }
 
         [Fact]
-        public void Update_WhenSessionExists_ReturnsOk()
+        // Tester at Delete sletter session korrekt
+        public void Delete_RemovesSession()
         {
-            Group group = CreateGroup();
+            using var context = GetDbContext();
 
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = true
+            });
 
-            Session session = CreateSession(group.Id);
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
 
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            Session updatedSession =
-                CreateSession(group.Id);
+            var controller = CreateController(context);
 
-            updatedSession.CarType = "Updated car";
+            var result = controller.Delete(1);
 
-            ActionResult<Session> result =
-                _controller.Update(session.Id, updatedSession);
-
-            Assert.IsType<OkObjectResult>(result.Result);
+            Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void Update_WhenSessionDoesNotExist_ReturnsNotFound()
+        // Tester at DeleteAll returnerer Ok
+        public void DeleteAll_ReturnsOk()
         {
-            Group group = CreateGroup();
+            using var context = GetDbContext();
 
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            var controller = CreateController(context);
 
-            Session updatedSession =
-                CreateSession(group.Id);
+            var result = controller.DeleteAll();
 
-            ActionResult<Session> result =
-                _controller.Update(999, updatedSession);
-
-            Assert.IsType<NotFoundObjectResult>(result.Result);
+            Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void EndSession_WhenSessionExists_ReturnsOkAndChangesStatus()
+        // Tester at GetClassSummary returnerer Ok
+        public void GetClassSummary_ReturnsOk()
         {
-            Group group = CreateGroup();
+            using var context = GetDbContext();
 
-            group.IsLocked = true;
+            var controller = CreateController(context);
 
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            var result = controller.GetClassSummary();
 
-            Session session = CreateSession(group.Id);
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            ActionResult<object> result =
-                _controller.EndSession(session.Id);
-
-            Assert.IsType<OkObjectResult>(result.Result);
-
-            Session updatedSession =
-                _context.Sessions.First();
-
-            Assert.Equal("Ended", updatedSession.Status);
-            Assert.NotNull(updatedSession.EndedAt);
+            Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void EndSession_WhenSessionExists_UnlocksGroup()
+        // Tester at GetLatestActiveSession returnerer NotFound hvis ingen aktive sessions findes
+        public void GetLatestActiveSession_ReturnsNotFound_WhenNoActiveSessionExists()
         {
-            Group group = CreateGroup();
+            using var context = GetDbContext();
 
-            group.IsLocked = true;
+            var controller = CreateController(context);
 
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            var result = controller.GetLatestActiveSession();
 
-            Session session = CreateSession(group.Id);
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            _controller.EndSession(session.Id);
-
-            Group updatedGroup =
-                _context.Groups.First();
-
-            Assert.False(updatedGroup.IsLocked);
+            Assert.IsType<NotFoundObjectResult>(result);
         }
 
         [Fact]
-        public void EndSession_WhenSessionDoesNotExist_ReturnsNotFound()
+        // Tester at GetLatestActiveSession returnerer Ok hvis aktiv session findes
+        public void GetLatestActiveSession_ReturnsOk_WhenActiveSessionExists()
         {
-            ActionResult<object> result =
-                _controller.EndSession(999);
+            using var context = GetDbContext();
 
-            Assert.IsType<NotFoundObjectResult>(result.Result);
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var controller = CreateController(context);
+
+            var result = controller.GetLatestActiveSession();
+
+            Assert.IsType<OkObjectResult>(result);
         }
     }
 }

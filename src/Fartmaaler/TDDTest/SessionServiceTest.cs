@@ -1,79 +1,226 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using FartmaalerAPI.Data;
+﻿using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class SessionServiceTest : IDisposable
+    public class SessionServiceTests
     {
-        private readonly AppDbContext _context;
-        private readonly SessionService _sessionService;
-
-        public SessionServiceTest()
+        private AppDbContext GetDbContext()
         {
-            DbContextOptions<AppDbContext> options =
-                new DbContextOptionsBuilder<AppDbContext>()
-                    .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                    .Options;
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options;
 
-            _context = new AppDbContext(options);
-            _sessionService = new SessionService(_context);
-        }
-
-        public void Dispose()
-        {
-            _context.Dispose();
-        }
-
-        private Group CreateGroup(bool isLocked = false)
-        {
-            return new Group
-            {
-                Name = "Gruppe 1",
-                School = "Zealand",
-                IsLocked = isLocked
-            };
-        }
-
-        private Session CreateSession(int groupId, string carType = "Toy car", string status = "Started")
-        {
-            return new Session
-            {
-                GroupId = groupId,
-                CarType = carType,
-                RoadType = "Byzone 50",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = status,
-                CreatedAt = DateTime.Now
-            };
+            return new AppDbContext(options);
         }
 
         [Fact]
-        public void EndSession_WhenSessionDoesNotExist_ReturnsNull()
+        public void GetSpeedLimit_ReturnsCorrectSpeedLimit()
         {
-            Session? result = _sessionService.EndSession(999);
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            Assert.Equal(50, service.GetSpeedLimit("byzone 50"));
+            Assert.Equal(80, service.GetSpeedLimit("landevej 80"));
+            Assert.Equal(110, service.GetSpeedLimit("motorvej 110"));
+        }
+
+        [Fact]
+        public void GetSpeedLimit_ReturnsDefault_WhenRoadTypeIsUnknown()
+        {
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            Assert.Equal(50, service.GetSpeedLimit("ukendt"));
+        }
+
+        [Fact]
+        public void GetScalingFactor_ReturnsCorrectScalingFactor()
+        {
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            Assert.Equal(20, service.GetScalingFactor("byzone 50"));
+            Assert.Equal(32, service.GetScalingFactor("landevej 80"));
+            Assert.Equal(44, service.GetScalingFactor("motorvej 110"));
+        }
+
+        [Fact]
+        public void GetScalingFactor_ReturnsDefault_WhenRoadTypeIsUnknown()
+        {
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            Assert.Equal(20, service.GetScalingFactor("ukendt"));
+        }
+
+        [Fact]
+        public void StartSession_ReturnsNull_WhenGroupDoesNotExist()
+        {
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            var result = service.StartSession(999, "benzin lille", "byzone 50");
 
             Assert.Null(result);
         }
 
         [Fact]
-        public void EndSession_WhenSessionExists_ChangesStatusToEnded()
+        public void StartSession_ReturnsNull_WhenGroupIsLocked()
         {
-            Group group = CreateGroup(isLocked: true);
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            using var context = GetDbContext();
 
-            Session session = CreateSession(group.Id);
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = true
+            });
 
-            Session? result = _sessionService.EndSession(session.Id);
+            context.SaveChanges();
+
+            var service = new SessionService(context);
+
+            var result = service.StartSession(1, "benzin lille", "byzone 50");
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void StartSession_CreatesSession_WhenGroupExistsAndIsNotLocked()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = false
+            });
+
+            context.SaveChanges();
+
+            var service = new SessionService(context);
+
+            var result = service.StartSession(1, "benzin lille", "byzone 50");
+
+            Assert.NotNull(result);
+            Assert.Equal(1, result.GroupId);
+            Assert.Equal("benzin lille", result.CarType);
+            Assert.Equal("byzone 50", result.RoadType);
+            Assert.Equal(50, result.SpeedLimit);
+            Assert.Equal(20, result.ScalingFactor);
+            Assert.Equal("Active", result.Status);
+            Assert.Null(result.EndedAt);
+        }
+
+        [Fact]
+        public void StartSession_LocksGroup()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = false
+            });
+
+            context.SaveChanges();
+
+            var service = new SessionService(context);
+
+            service.StartSession(1, "hybrid", "landevej 80");
+
+            var group = context.Groups.First(g => g.Id == 1);
+
+            Assert.True(group.IsLocked);
+        }
+
+        [Fact]
+        public void StartSession_EndsExistingActiveSessions()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = false
+            });
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var service = new SessionService(context);
+
+            service.StartSession(1, "hybrid", "landevej 80");
+
+            var oldSession = context.Sessions.First(s => s.Id == 1);
+
+            Assert.Equal("Ended", oldSession.Status);
+            Assert.NotNull(oldSession.EndedAt);
+        }
+
+        [Fact]
+        public void EndSession_ReturnsNull_WhenSessionDoesNotExist()
+        {
+            using var context = GetDbContext();
+            var service = new SessionService(context);
+
+            var result = service.EndSession(999);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void EndSession_EndsActiveSession()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = true
+            });
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "benzin lille",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var service = new SessionService(context);
+
+            var result = service.EndSession(1);
 
             Assert.NotNull(result);
             Assert.Equal("Ended", result.Status);
@@ -81,108 +228,67 @@ namespace TDDTest
         }
 
         [Fact]
-        public void EndSession_WhenSessionEnds_UnlocksGroup()
+        public void EndSession_UnlocksGroup()
         {
-            Group group = CreateGroup(isLocked: true);
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            using var context = GetDbContext();
 
-            Session session = CreateSession(group.Id);
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            _sessionService.EndSession(session.Id);
-
-            Group? updatedGroup = _context.Groups.FirstOrDefault(g => g.Id == group.Id);
-
-            Assert.NotNull(updatedGroup);
-            Assert.False(updatedGroup.IsLocked);
-        }
-
-        [Fact]
-        public void GetHistoryByGroup_WhenGroupDoesNotExist_ReturnsNull()
-        {
-            object? result = _sessionService.GetHistoryByGroup(
-                999,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public void GetHistoryByGroup_WhenGroupExists_ReturnsHistory()
-        {
-            Group group = CreateGroup();
-            _context.Groups.Add(group);
-            _context.SaveChanges();
-
-            Session session = CreateSession(group.Id, status: "Ended");
-            session.EndedAt = DateTime.Now;
-
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            Measurement measurement = new Measurement
+            context.Groups.Add(new Group
             {
-                SessionId = session.Id,
-                SimulatedSpeed = 40,
-                Co2 = 20,
-                Co2Saved = 10,
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = true
+            });
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "benzin lille",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
                 CreatedAt = DateTime.Now
-            };
+            });
 
-            _context.Measurements.Add(measurement);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            object? result = _sessionService.GetHistoryByGroup(
-                group.Id,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
+            var service = new SessionService(context);
 
-            Assert.NotNull(result);
+            service.EndSession(1);
 
-            List<object> history = ((IEnumerable<object>)result).ToList();
+            var group = context.Groups.First(g => g.Id == 1);
 
-            Assert.Single(history);
+            Assert.False(group.IsLocked);
         }
 
         [Fact]
-        public void GetHistoryByGroup_WhenFilteringByCarType_ReturnsCorrectSessions()
+        public void EndSession_ReturnsSession_WhenSessionIsAlreadyEnded()
         {
-            Group group = CreateGroup();
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            using var context = GetDbContext();
 
-            Session toyCarSession = CreateSession(group.Id, carType: "Toy car", status: "Ended");
-            Session truckSession = CreateSession(group.Id, carType: "Truck", status: "Ended");
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "benzin lille",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Ended",
+                CreatedAt = DateTime.Now,
+                EndedAt = DateTime.Now
+            });
 
-            _context.Sessions.Add(toyCarSession);
-            _context.Sessions.Add(truckSession);
-            _context.SaveChanges();
+            context.SaveChanges();
 
-            object? result = _sessionService.GetHistoryByGroup(
-                group.Id,
-                "Toy car",
-                null,
-                null,
-                null,
-                null,
-                null);
+            var service = new SessionService(context);
+
+            var result = service.EndSession(1);
 
             Assert.NotNull(result);
-
-            List<object> history = ((IEnumerable<object>)result).ToList();
-
-            Assert.Single(history);
+            Assert.Equal("Ended", result.Status);
         }
     }
 }

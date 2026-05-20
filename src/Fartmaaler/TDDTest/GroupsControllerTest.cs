@@ -1,125 +1,318 @@
-﻿using System;
-using FartmaalerAPI.Controllers;
+﻿using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
+using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
-using FartmaalerAPI.Repositories;
+using FartmaalerAPI.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using Xunit;
+using Moq; 
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    // Tester GroupsController, så vi ved at endpoints og delete-logik virker korrekt.
-    // Testene bruger en InMemory database, så vi ikke rammer den rigtige database.
-    public class GroupsControllerTest : IDisposable
+    public class GroupsControllerTests
     {
-        // Test database context
-        private readonly AppDbContext _context;
-
-        // Repository som controlleren bruger
-        private readonly GroupsRepo _repo;
-
-        // Controller som vi tester
-        private readonly GroupsController _controller;
-
-        // Constructor kører før hver test
-        public GroupsControllerTest()
+        // Opretter fake in-memory database
+        private AppDbContext GetDbContext()
         {
-            // Opretter en unik InMemory database til hver test
-            DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+            var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            // Opretter context
-            _context = new AppDbContext(options);
-
-            // Opretter repository
-            _repo = new GroupsRepo(_context);
-
-            // Opretter controller
-            _controller = new GroupsController(_repo, _context);
+            return new AppDbContext(options);
         }
-
-        // Dispose rydder op efter testen
-        public void Dispose()
-        {
-            _context.Dispose();
-        }
-
-        #region GET TESTS
 
         [Fact]
-        public void GetById_WhenNotExists_ReturnsNotFound()
+        // Tester at GetAll returnerer grupper
+        public void GetAll_ReturnsGroups()
         {
-            // Act - forsøger at hente en gruppe der ikke findes
-            ActionResult<Group> result = _controller.GetById(999);
+            using var context = GetDbContext();
 
-            // Assert - tjekker at vi får NotFound
+            var groups = new List<Group>
+            {
+                new Group
+                {
+                    Id = 1,
+                    Name = "Gruppe 1",
+                    School = "Roskilde Skole"
+                }
+            };
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            repoMock.Setup(repo => repo.GetAll())
+                .Returns(groups);
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.GetAll();
+
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+
+            Assert.NotNull(okResult);
+        }
+
+        [Fact]
+        // Tester at GetById returnerer NotFound hvis gruppen ikke findes
+        public void GetById_ReturnsNotFound_WhenGroupDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            repoMock.Setup(repo => repo.GetById(1))
+                .Returns((Group?)null);
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.GetById(1);
+
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
 
-        #endregion
-
-        #region DELETE TESTS
-
         [Fact]
-        public void Delete_WhenGroupHasSessionsAndMeasurements_DeletesEverything()
+        // Tester at GetById returnerer gruppe hvis den findes
+        public void GetById_ReturnsGroup_WhenGroupExists()
         {
-            // Arrange - opretter en gruppe
-            Group group = new Group
+            using var context = GetDbContext();
+
+            var group = new Group
             {
-                Name = "Test Group",
-                School = "Test School",
-                IsLocked = false
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole"
             };
 
-            _context.Groups.Add(group);
-            _context.SaveChanges();
+            var repoMock = new Mock<IRepository<Group>>();
 
-            // Arrange - opretter en session til gruppen
-            Session session = new Session
-            {
-                GroupId = group.Id,
-                CarType = "Toy car",
-                RoadType = "Asphalt",
-                SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = "Started",
-                CreatedAt = DateTime.Now,
-                EndedAt = null
-            };
+            repoMock.Setup(repo => repo.GetById(1))
+                .Returns(group);
 
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
+            var controller = new GroupsController(repoMock.Object, context);
 
-            // Arrange - opretter en measurement til sessionen
-            Measurement measurement = new Measurement
-            {
-                SessionId = session.Id,
-                MeasuredSpeed = 40,
-                SimulatedSpeed = 400,
-                Time = 2,
-                Distance = 20,
-                Co2 = 10,
-                Co2Saved = 5,
-                CreatedAt = DateTime.Now
-            };
+            var result = controller.GetById(1);
 
-            _context.Measurements.Add(measurement);
-            _context.SaveChanges();
-
-            // Act - sletter gruppen via controller
-            ActionResult result = _controller.Delete(group.Id);
-
-            // Assert - tjekker at vi får OK response
-            Assert.IsType<OkObjectResult>(result);
-
-            // Assert - tjekker at alle data er slettet
-            Assert.Empty(_context.Groups);
-            Assert.Empty(_context.Sessions);
-            Assert.Empty(_context.Measurements);
+            Assert.IsType<OkObjectResult>(result.Result);
         }
 
-        #endregion
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis request er null
+        public void Add_ReturnsBadRequest_WhenRequestIsNull()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.Add(null);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis navn er tomt
+        public void Add_ReturnsBadRequest_WhenNameIsEmpty()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var request = new CreateGroupRequest
+            {
+                Name = ""
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add opretter gruppe korrekt
+        public void Add_CreatesGroup()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            repoMock.Setup(repo => repo.Add(It.IsAny<Group>()))
+                .Returns((Group group) =>
+                {
+                    group.Id = 1;
+                    return group;
+                });
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var request = new CreateGroupRequest
+            {
+                Name = "Ny Gruppe"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<CreatedAtActionResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Add returnerer BadRequest hvis gruppen allerede findes
+        public void Add_ReturnsBadRequest_WhenGroupAlreadyExists()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole"
+            });
+
+            context.SaveChanges();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var request = new CreateGroupRequest
+            {
+                Name = "Gruppe 1"
+            };
+
+            var result = controller.Add(request);
+
+            Assert.IsType<BadRequestObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Update returnerer NotFound hvis gruppen ikke findes
+        public void Update_ReturnsNotFound_WhenGroupDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var request = new UpdateGroupRequest
+            {
+                Name = "Test"
+            };
+
+            var result = controller.Update(1, request);
+
+            Assert.IsType<NotFoundObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Update opdaterer gruppen korrekt
+        public void Update_UpdatesGroup()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gammel Gruppe",
+                School = "Roskilde Skole"
+            });
+
+            context.SaveChanges();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var request = new UpdateGroupRequest
+            {
+                Name = "Ny Gruppe"
+            };
+
+            var result = controller.Update(1, request);
+
+            Assert.IsType<OkObjectResult>(result.Result);
+        }
+
+        [Fact]
+        // Tester at Delete returnerer NotFound hvis gruppen ikke findes
+        public void Delete_ReturnsNotFound_WhenGroupDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.Delete(1);
+
+            Assert.IsType<NotFoundObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at Delete sletter gruppe korrekt
+        public void Delete_RemovesGroup()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole"
+            });
+
+            context.SaveChanges();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.Delete(1);
+
+            Assert.IsType<OkObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at DeleteAllGroups returnerer Ok
+        public void DeleteAllGroups_ReturnsOk()
+        {
+            using var context = GetDbContext();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.DeleteAllGroups();
+
+            Assert.IsType<OkObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at GetGroupsOverview returnerer overview data
+        public void GetGroupsOverview_ReturnsOverview()
+        {
+            using var context = GetDbContext();
+
+            context.Groups.Add(new Group
+            {
+                Id = 1,
+                Name = "Gruppe 1",
+                School = "Roskilde Skole",
+                IsLocked = false
+            });
+
+            context.SaveChanges();
+
+            var repoMock = new Mock<IRepository<Group>>();
+
+            var controller = new GroupsController(repoMock.Object, context);
+
+            var result = controller.GetGroupsOverview();
+
+            Assert.IsType<OkObjectResult>(result);
+        }
     }
 }

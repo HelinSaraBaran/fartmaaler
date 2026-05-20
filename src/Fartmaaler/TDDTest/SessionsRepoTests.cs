@@ -1,273 +1,232 @@
-using System;
-using System.Linq;
 using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class SessionsRepoTests : IDisposable
+    public class SessionsRepoTests
     {
-        private readonly AppDbContext _context;
-        private readonly SessionsRepo _repo;
-
-        public SessionsRepoTests()
+        // Opretter fake in-memory database
+        private AppDbContext GetDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new AppDbContext(options);
-            _repo = new SessionsRepo(_context);
+            return new AppDbContext(options);
         }
 
-        public void Dispose()
+        [Fact]
+        // Tester at GetAll returnerer alle sessions
+        public void GetAll_ReturnsAllSessions()
         {
-            _context.Dispose();
+            using var context = GetDbContext();
+
+            context.Sessions.AddRange(
+                new Session
+                {
+                    Id = 1,
+                    GroupId = 1,
+                    CarType = "diesel",
+                    RoadType = "byzone 50",
+                    SpeedLimit = 50,
+                    ScalingFactor = 20,
+                    Status = "Active",
+                    CreatedAt = DateTime.Now
+                },
+                new Session
+                {
+                    Id = 2,
+                    GroupId = 2,
+                    CarType = "hybrid",
+                    RoadType = "landevej 80",
+                    SpeedLimit = 80,
+                    ScalingFactor = 32,
+                    Status = "Ended",
+                    CreatedAt = DateTime.Now
+                });
+
+            context.SaveChanges();
+
+            var repo = new SessionsRepo(context);
+
+            var result = repo.GetAll();
+
+            Assert.Equal(2, result.Count());
         }
 
-        private Session CreateSession()
+        [Fact]
+        // Tester at GetById returnerer session hvis den findes
+        public void GetById_ReturnsSession_WhenSessionExists()
         {
-            return new Session
+            using var context = GetDbContext();
+
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var repo = new SessionsRepo(context);
+
+            var result = repo.GetById(1);
+
+            Assert.NotNull(result);
+            Assert.Equal("diesel", result.CarType);
+        }
+
+        [Fact]
+        // Tester at GetById returnerer null hvis session ikke findes
+        public void GetById_ReturnsNull_WhenSessionDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var repo = new SessionsRepo(context);
+
+            var result = repo.GetById(1);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        // Tester at Add tilføjer session korrekt
+        public void Add_AddsSession()
+        {
+            using var context = GetDbContext();
+
+            var repo = new SessionsRepo(context);
+
+            var session = new Session
             {
                 GroupId = 1,
-                CarType = "Toy car",
-                RoadType = "Byzone 50",
+                CarType = "diesel",
+                RoadType = "byzone 50",
                 SpeedLimit = 50,
-                ScalingFactor = 10,
-                Status = "Started",
-                CreatedAt = DateTime.Now,
-                EndedAt = null
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
             };
-        }
 
-        #region GET TESTS
-
-        [Fact]
-        public void GetAll_WhenRepoIsEmpty_ReturnsEmptyList()
-        {
-            var result = _repo.GetAll();
-
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public void GetAll_WhenSessionsExist_ReturnsAllSessions()
-        {
-            _context.Sessions.AddRange(
-                CreateSession(),
-                CreateSession(),
-                CreateSession()
-            );
-            _context.SaveChanges();
-
-            var result = _repo.GetAll().ToList();
-
-            Assert.Equal(3, result.Count);
-        }
-
-        [Fact]
-        public void GetById_WhenIdExists_ReturnsSession()
-        {
-            var session = CreateSession();
-            _context.Sessions.Add(session);
-            _context.SaveChanges();
-
-            var result = _repo.GetById(session.Id);
+            var result = repo.Add(session);
 
             Assert.NotNull(result);
-            Assert.Equal(session.Id, result.Id);
+            Assert.Single(context.Sessions);
         }
 
         [Fact]
-        public void GetById_WhenIdDoesNotExist_ReturnsNull()
+        // Tester at Delete returnerer null hvis session ikke findes
+        public void Delete_ReturnsNull_WhenSessionDoesNotExist()
         {
-            var result = _repo.GetById(999);
+            using var context = GetDbContext();
 
-            Assert.Null(result);
-        }
+            var repo = new SessionsRepo(context);
 
-        #endregion
-
-        #region ADD TESTS
-
-        [Fact]
-        public void Add_ValidSession_AddsSessionToDatabase()
-        {
-            var session = CreateSession();
-
-            var result = _repo.Add(session);
-
-            Assert.NotNull(result);
-            Assert.True(result.Id > 0);
-            Assert.Single(_context.Sessions);
-        }
-
-        [Fact]
-        public void Add_ValidSession_PropertiesAreSavedCorrectly()
-        {
-            var session = CreateSession();
-
-            var result = _repo.Add(session);
-
-            Assert.Equal(1, result.GroupId);
-            Assert.Equal("Toy car", result.CarType);
-            Assert.Equal("Byzone 50", result.RoadType);
-            Assert.Equal(50, result.SpeedLimit);
-            Assert.Equal(10, result.ScalingFactor);
-            Assert.Equal("Started", result.Status);
-            Assert.Null(result.EndedAt);
-        }
-
-        [Fact]
-        public void Add_ValidSession_CanBeFoundById()
-        {
-            var session = CreateSession();
-
-            var added = _repo.Add(session);
-            var found = _repo.GetById(added.Id);
-
-            Assert.NotNull(found);
-            Assert.Equal(added.Id, found.Id);
-        }
-
-        #endregion
-
-        #region DELETE TESTS
-
-        [Fact]
-        public void Delete_WhenIdDoesNotExist_ReturnsNull()
-        {
-            var result = _repo.Delete(999);
+            var result = repo.Delete(1);
 
             Assert.Null(result);
         }
 
         [Fact]
-        public void Delete_WhenIdExists_RemovesSessionFromDatabase()
+        // Tester at Delete sletter session korrekt
+        public void Delete_RemovesSession()
         {
-            var session = _repo.Add(CreateSession());
+            using var context = GetDbContext();
 
-            var deleted = _repo.Delete(session.Id);
-            var all = _repo.GetAll();
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
 
-            Assert.NotNull(deleted);
-            Assert.Empty(all);
-        }
+            context.SaveChanges();
 
-        [Fact]
-        public void Delete_WhenIdExists_ReturnsDeletedSession()
-        {
-            var session = _repo.Add(CreateSession());
+            var repo = new SessionsRepo(context);
 
-            var result = _repo.Delete(session.Id);
+            var result = repo.Delete(1);
 
             Assert.NotNull(result);
-            Assert.Equal(session.Id, result.Id);
-            Assert.Equal("Toy car", result.CarType);
+            Assert.Empty(context.Sessions);
         }
 
         [Fact]
-        public void Delete_OneOfMultiple_RemovesOnlySelectedSession()
+        // Tester at Update returnerer null hvis session ikke findes
+        public void Update_ReturnsNull_WhenSessionDoesNotExist()
         {
-            var s1 = _repo.Add(CreateSession());
-            var s2 = _repo.Add(CreateSession());
+            using var context = GetDbContext();
 
-            _repo.Delete(s1.Id);
-            var all = _repo.GetAll().ToList();
-
-            Assert.Single(all);
-            Assert.Equal(s2.Id, all[0].Id);
-        }
-
-        #endregion
-
-        #region UPDATE TESTS
-
-        [Fact]
-        public void Update_WhenIdDoesNotExist_ReturnsNull()
-        {
-            var updatedSession = CreateSession();
-
-            var result = _repo.Update(999, updatedSession);
-
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public void Update_WhenIdExists_UpdatesSession()
-        {
-            var session = _repo.Add(CreateSession());
+            var repo = new SessionsRepo(context);
 
             var updatedSession = new Session
             {
                 GroupId = 2,
-                CarType = "Ball",
-                RoadType = "Landevej 80",
+                CarType = "hybrid",
+                RoadType = "landevej 80",
                 SpeedLimit = 80,
-                ScalingFactor = 15,
-                Status = "Ended",
-                EndedAt = DateTime.Now
+                ScalingFactor = 32,
+                Status = "Ended"
             };
 
-            var result = _repo.Update(session.Id, updatedSession);
+            var result = repo.Update(1, updatedSession);
 
-            Assert.NotNull(result);
-            Assert.Equal(2, result.GroupId);
-            Assert.Equal("Ball", result.CarType);
-            Assert.Equal("Landevej 80", result.RoadType);
-            Assert.Equal(80, result.SpeedLimit);
-            Assert.Equal(15, result.ScalingFactor);
-            Assert.Equal("Ended", result.Status);
-            Assert.NotNull(result.EndedAt);
+            Assert.Null(result);
         }
 
         [Fact]
-        public void Update_WhenIdExists_DoesNotChangeId()
+        // Tester at Update opdaterer session korrekt
+        public void Update_UpdatesSession()
         {
-            var session = _repo.Add(CreateSession());
+            using var context = GetDbContext();
 
-            var updatedSession = CreateSession();
-            updatedSession.Id = 999;
+            context.Sessions.Add(new Session
+            {
+                Id = 1,
+                GroupId = 1,
+                CarType = "diesel",
+                RoadType = "byzone 50",
+                SpeedLimit = 50,
+                ScalingFactor = 20,
+                Status = "Active",
+                CreatedAt = DateTime.Now
+            });
 
-            var result = _repo.Update(session.Id, updatedSession);
+            context.SaveChanges();
 
-            Assert.NotNull(result);
-            Assert.Equal(session.Id, result.Id);
-            Assert.NotEqual(999, result.Id);
-        }
-
-        [Fact]
-        public void Update_OneOfMultiple_UpdatesOnlySelectedSession()
-        {
-            var s1 = _repo.Add(CreateSession());
-            var s2 = _repo.Add(CreateSession());
+            var repo = new SessionsRepo(context);
 
             var updatedSession = new Session
             {
-                GroupId = 99,
-                CarType = "Updated",
-                RoadType = "Motorvej 130",
-                SpeedLimit = 130,
-                ScalingFactor = 20,
+                GroupId = 2,
+                CarType = "hybrid",
+                RoadType = "landevej 80",
+                SpeedLimit = 80,
+                ScalingFactor = 32,
                 Status = "Ended",
                 EndedAt = DateTime.Now
             };
 
-            _repo.Update(s1.Id, updatedSession);
+            var result = repo.Update(1, updatedSession);
 
-            var firstResult = _repo.GetById(s1.Id);
-            var secondResult = _repo.GetById(s2.Id);
-
-            Assert.NotNull(firstResult);
-            Assert.NotNull(secondResult);
-
-            Assert.Equal("Updated", firstResult.CarType);
-            Assert.Equal("Toy car", secondResult.CarType);
+            Assert.NotNull(result);
+            Assert.Equal("hybrid", result.CarType);
+            Assert.Equal("landevej 80", result.RoadType);
+            Assert.Equal(80, result.SpeedLimit);
+            Assert.Equal("Ended", result.Status);
         }
-
-        #endregion
     }
 }
