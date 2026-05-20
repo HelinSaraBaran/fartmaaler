@@ -10,7 +10,7 @@ namespace FartmaalerAPI.Services
         private readonly AppDbContext _context;
         private readonly MeasurementsRepo _repo;
 
-        private const double DistanceMeters = 5.0;
+        private const double DistanceMeters = 0.92;
 
         public MeasurementService(AppDbContext context, MeasurementsRepo repo)
         {
