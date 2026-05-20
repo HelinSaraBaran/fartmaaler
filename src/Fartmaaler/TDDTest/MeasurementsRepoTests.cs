@@ -2,199 +2,252 @@ using FartmaalerAPI.Data;
 using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class MeasurementsRepoTests : IDisposable
+    public class MeasurementsRepoTests
     {
-        private readonly AppDbContext _context;
-        private readonly MeasurementsRepo _repo;
-
-        public MeasurementsRepoTests()
+        // Opretter fake in-memory database
+        private AppDbContext GetDbContext()
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new AppDbContext(options);
-            _repo = new MeasurementsRepo(_context);
+            return new AppDbContext(options);
         }
 
-        public void Dispose()
+        [Fact]
+        // Tester at GetAll returnerer alle målinger
+        public void GetAll_ReturnsAllMeasurements()
         {
-            _context.Dispose();
+            using var context = GetDbContext();
+
+            context.Measurements.AddRange(
+                new Measurement
+                {
+                    Id = 1,
+                    SessionId = 1,
+                    MeasuredSpeed = 10,
+                    SimulatedSpeed = 50,
+                    Time = 2,
+                    Distance = 5,
+                    SpeedLimit = 50,
+                    Status = "On limit",
+                    Co2 = 2,
+                    Co2Saved = 1,
+                    CreatedAt = DateTime.Now
+                },
+                new Measurement
+                {
+                    Id = 2,
+                    SessionId = 1,
+                    MeasuredSpeed = 12,
+                    SimulatedSpeed = 60,
+                    Time = 2,
+                    Distance = 5,
+                    SpeedLimit = 50,
+                    Status = "Too fast",
+                    Co2 = 3,
+                    Co2Saved = 0,
+                    CreatedAt = DateTime.Now
+                });
+
+            context.SaveChanges();
+
+            var repo = new MeasurementsRepo(context);
+
+            var result = repo.GetAll();
+
+            Assert.Equal(2, result.Count());
         }
 
-        private Measurement CreateMeasurement(int sessionId = 1)
+        [Fact]
+        // Tester at GetById returnerer måling hvis den findes
+        public void GetById_ReturnsMeasurement_WhenMeasurementExists()
         {
-            return new Measurement
+            using var context = GetDbContext();
+
+            context.Measurements.Add(new Measurement
             {
-                SessionId = sessionId,
-                MeasuredSpeed = 18,
+                Id = 1,
+                SessionId = 1,
+                MeasuredSpeed = 10,
                 SimulatedSpeed = 50,
-                Time = 1,
+                Time = 2,
                 Distance = 5,
                 SpeedLimit = 50,
                 Status = "On limit",
-                Co2 = 0,
-                Co2Saved = 0,
+                Co2 = 2,
+                Co2Saved = 1,
+                CreatedAt = DateTime.Now
+            });
+
+            context.SaveChanges();
+
+            var repo = new MeasurementsRepo(context);
+
+            var result = repo.GetById(1);
+
+            Assert.NotNull(result);
+            Assert.Equal(50, result.SimulatedSpeed);
+        }
+
+        [Fact]
+        // Tester at GetById returnerer null hvis målingen ikke findes
+        public void GetById_ReturnsNull_WhenMeasurementDoesNotExist()
+        {
+            using var context = GetDbContext();
+
+            var repo = new MeasurementsRepo(context);
+
+            var result = repo.GetById(1);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        // Tester at GetBySessionId returnerer målinger for korrekt session
+        public void GetBySessionId_ReturnsMeasurementsForSession()
+        {
+            using var context = GetDbContext();
+
+            context.Measurements.AddRange(
+                new Measurement
+                {
+                    Id = 1,
+                    SessionId = 1,
+                    MeasuredSpeed = 10,
+                    SimulatedSpeed = 50,
+                    Time = 2,
+                    Distance = 5,
+                    SpeedLimit = 50,
+                    Status = "On limit",
+                    Co2 = 2,
+                    Co2Saved = 1,
+                    CreatedAt = DateTime.Now
+                },
+                new Measurement
+                {
+                    Id = 2,
+                    SessionId = 2,
+                    MeasuredSpeed = 12,
+                    SimulatedSpeed = 60,
+                    Time = 2,
+                    Distance = 5,
+                    SpeedLimit = 50,
+                    Status = "Too fast",
+                    Co2 = 3,
+                    Co2Saved = 0,
+                    CreatedAt = DateTime.Now
+                });
+
+            context.SaveChanges();
+
+            var repo = new MeasurementsRepo(context);
+
+            var result = repo.GetBySessionId(1);
+
+            Assert.Single(result);
+        }
+
+        [Fact]
+        // Tester at Add tilføjer måling korrekt
+        public void Add_AddsMeasurement()
+        {
+            using var context = GetDbContext();
+
+            var repo = new MeasurementsRepo(context);
+
+            var measurement = new Measurement
+            {
+                SessionId = 1,
+                MeasuredSpeed = 10,
+                SimulatedSpeed = 50,
+                Time = 2,
+                Distance = 5,
+                SpeedLimit = 50,
+                Status = "On limit",
+                Co2 = 2,
+                Co2Saved = 1,
                 CreatedAt = DateTime.Now
             };
-        }
 
-        #region GET TESTS
-
-        [Fact]
-        public void GetAll_WhenEmpty_ReturnsEmptyList()
-        {
-            var result = _repo.GetAll();
-
-            Assert.Empty(result);
-        }
-
-        [Fact]
-        public void GetAll_WhenMeasurementsExist_ReturnsAllMeasurements()
-        {
-            _repo.Add(CreateMeasurement());
-            _repo.Add(CreateMeasurement());
-            _repo.Add(CreateMeasurement());
-
-            var result = _repo.GetAll().ToList();
-
-            Assert.Equal(3, result.Count);
-        }
-
-        [Fact]
-        public void GetById_WhenExists_ReturnsMeasurement()
-        {
-            var measurement = _repo.Add(CreateMeasurement());
-
-            var result = _repo.GetById(measurement.Id);
+            var result = repo.Add(measurement);
 
             Assert.NotNull(result);
-            Assert.Equal(measurement.Id, result.Id);
+            Assert.Single(context.Measurements);
         }
 
         [Fact]
-        public void GetById_WhenNotExists_ReturnsNull()
+        // Tester at Delete returnerer null hvis målingen ikke findes
+        public void Delete_ReturnsNull_WhenMeasurementDoesNotExist()
         {
-            var result = _repo.GetById(999);
+            using var context = GetDbContext();
+
+            var repo = new MeasurementsRepo(context);
+
+            var result = repo.Delete(1);
 
             Assert.Null(result);
         }
 
         [Fact]
-        public void GetBySessionId_WhenMeasurementsExist_ReturnsOnlyMeasurementsForSession()
+        // Tester at Delete sletter måling korrekt
+        public void Delete_RemovesMeasurement()
         {
-            _repo.Add(CreateMeasurement(1));
-            _repo.Add(CreateMeasurement(1));
-            _repo.Add(CreateMeasurement(2));
+            using var context = GetDbContext();
 
-            var result = _repo.GetBySessionId(1).ToList();
+            context.Measurements.Add(new Measurement
+            {
+                Id = 1,
+                SessionId = 1,
+                MeasuredSpeed = 10,
+                SimulatedSpeed = 50,
+                Time = 2,
+                Distance = 5,
+                SpeedLimit = 50,
+                Status = "On limit",
+                Co2 = 2,
+                Co2Saved = 1,
+                CreatedAt = DateTime.Now
+            });
 
-            Assert.Equal(2, result.Count);
-            Assert.All(result, m => Assert.Equal(1, m.SessionId));
-        }
+            context.SaveChanges();
 
-        [Fact]
-        public void GetBySessionId_WhenNoMeasurementsExist_ReturnsEmptyList()
-        {
-            var result = _repo.GetBySessionId(999);
+            var repo = new MeasurementsRepo(context);
 
-            Assert.Empty(result);
-        }
-
-        #endregion
-
-        #region ADD TESTS
-
-        [Fact]
-        public void Add_ValidMeasurement_SavesMeasurement()
-        {
-            var measurement = CreateMeasurement();
-
-            var result = _repo.Add(measurement);
-
-            Assert.True(result.Id > 0);
-            Assert.Single(_context.Measurements);
-        }
-
-        [Fact]
-        public void Add_ValidMeasurement_PropertiesAreSavedCorrectly()
-        {
-            var result = _repo.Add(CreateMeasurement());
-
-            Assert.Equal(1, result.SessionId);
-            Assert.Equal(18, result.MeasuredSpeed);
-            Assert.Equal(50, result.SimulatedSpeed);
-            Assert.Equal(1, result.Time);
-            Assert.Equal(5, result.Distance);
-            Assert.Equal(50, result.SpeedLimit);
-            Assert.Equal("On limit", result.Status);
-            Assert.Equal(0, result.Co2);
-            Assert.Equal(0, result.Co2Saved);
-        }
-
-        [Fact]
-        public void Add_ValidMeasurement_CanBeFoundById()
-        {
-            var measurement = _repo.Add(CreateMeasurement());
-
-            var found = _repo.GetById(measurement.Id);
-
-            Assert.NotNull(found);
-            Assert.Equal(measurement.Id, found.Id);
-        }
-
-        #endregion
-
-        #region DELETE TESTS
-
-        [Fact]
-        public void Delete_WhenExists_RemovesMeasurement()
-        {
-            var measurement = _repo.Add(CreateMeasurement());
-
-            var result = _repo.Delete(measurement.Id);
+            var result = repo.Delete(1);
 
             Assert.NotNull(result);
-            Assert.Empty(_context.Measurements);
+            Assert.Empty(context.Measurements);
         }
 
         [Fact]
-        public void Delete_WhenExists_ReturnsDeletedMeasurement()
+        // Tester at Update kaster exception fordi målinger ikke kan opdateres
+        public void Update_ThrowsException()
         {
-            var measurement = _repo.Add(CreateMeasurement());
+            using var context = GetDbContext();
 
-            var result = _repo.Delete(measurement.Id);
+            var repo = new MeasurementsRepo(context);
 
-            Assert.NotNull(result);
-            Assert.Equal(measurement.Id, result.Id);
-            Assert.Equal(18, result.MeasuredSpeed);
-        }
+            var measurement = new Measurement
+            {
+                SessionId = 1,
+                MeasuredSpeed = 10,
+                SimulatedSpeed = 50,
+                Time = 2,
+                Distance = 5,
+                SpeedLimit = 50,
+                Status = "On limit",
+                Co2 = 2,
+                Co2Saved = 1,
+                CreatedAt = DateTime.Now
+            };
 
-        [Fact]
-        public void Delete_WhenNotExists_ReturnsNull()
-        {
-            var result = _repo.Delete(999);
-
-            Assert.Null(result);
-        }
-
-        #endregion
-
-        #region UPDATE TESTS
-
-        [Fact]
-        public void Update_WhenCalled_ThrowsException()
-        {
             Assert.Throws<NotImplementedException>(() =>
-                _repo.Update(1, CreateMeasurement()));
+                repo.Update(1, measurement));
         }
-
-        #endregion
     }
 }

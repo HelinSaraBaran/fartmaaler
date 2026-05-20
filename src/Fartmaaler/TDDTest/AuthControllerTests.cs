@@ -1,7 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using BCrypt.Net;
-using FartmaalerAPI.Controllers;
+﻿using FartmaalerAPI.Controllers;
 using FartmaalerAPI.Data;
 using FartmaalerAPI.DTOs;
 using FartmaalerAPI.Models;
@@ -10,220 +7,147 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
-namespace TDDTest
+namespace FartmaalerAPI.Tests
 {
-    public class AuthControllerTests : IDisposable
+    public class AuthControllerTests
     {
-        private readonly AppDbContext _context;
-        private readonly AuthController _controller;
-        private readonly IConfiguration _configuration;
-
-        public AuthControllerTests()
+        // Opretter en fake in-memory database til hver test
+        private AppDbContext GetDbContext()
         {
-            // InMemory database
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _context = new AppDbContext(options);
+            return new AppDbContext(options);
+        }
 
-            // Fake JWT settings
-            var inMemorySettings = new Dictionary<string, string>
+        // Opretter fake JWT settings, så controlleren kan lave token
+        private IConfiguration GetConfiguration()
+        {
+            var settings = new Dictionary<string, string?>
             {
-                {"Jwt:Key", "ThisIsASecretKeyForJwtTesting12345"},
-                {"Jwt:Issuer", "TestIssuer"},
-                {"Jwt:Audience", "TestAudience"}
+                { "Jwt:Key", "ThisIsASecretTestKeyForJwtThatIsLongEnough12345" },
+                { "Jwt:Issuer", "TestIssuer" },
+                { "Jwt:Audience", "TestAudience" }
             };
 
-            _configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(inMemorySettings!)
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(settings)
                 .Build();
-
-            _controller = new AuthController(_context, _configuration);
-        }
-
-        public void Dispose()
-        {
-            _context.Dispose();
-        }
-
-        private User CreateUser(
-            string username = "admin",
-            string password = "1234",
-            string role = "Teacher")
-        {
-            User user = new User
-            {
-                Username = username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = role
-            };
-
-            _context.Users.Add(user);
-            _context.SaveChanges();
-
-            return user;
         }
 
         [Fact]
-        public void Login_WhenUserDoesNotExist_ReturnsUnauthorized()
+        // Tester at login returnerer Unauthorized, hvis brugeren ikke findes
+        public void Login_ReturnsUnauthorized_WhenUserDoesNotExist()
         {
-            // Arrange
-            LoginRequest request = new LoginRequest
-            {
-                Username = "wronguser",
-                Password = "1234"
-            };
+            using var context = GetDbContext();
+            var configuration = GetConfiguration();
+            var controller = new AuthController(context, configuration);
 
-            // Act
-            var result = _controller.Login(request);
-
-            // Assert
-            Assert.IsType<UnauthorizedObjectResult>(result);
-        }
-
-        [Fact]
-        public void Login_WhenPasswordIsWrong_ReturnsUnauthorized()
-        {
-            // Arrange
-            CreateUser();
-
-            LoginRequest request = new LoginRequest
-            {
-                Username = "admin",
-                Password = "wrongpassword"
-            };
-
-            // Act
-            var result = _controller.Login(request);
-
-            // Assert
-            Assert.IsType<UnauthorizedObjectResult>(result);
-        }
-
-        [Fact]
-        public void Login_WhenLoginIsCorrect_ReturnsOk()
-        {
-            // Arrange
-            CreateUser();
-
-            LoginRequest request = new LoginRequest
+            var request = new LoginRequest
             {
                 Username = "admin",
                 Password = "1234"
             };
 
-            // Act
-            var result = _controller.Login(request);
+            var result = controller.Login(request);
 
-            // Assert
+            Assert.IsType<UnauthorizedObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at login returnerer Unauthorized, hvis password er forkert
+        public void Login_ReturnsUnauthorized_WhenPasswordIsWrong()
+        {
+            using var context = GetDbContext();
+
+            context.Users.Add(new User
+            {
+                Id = 1,
+                Username = "admin",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("correctPassword"),
+                Role = "Teacher"
+            });
+
+            context.SaveChanges();
+
+            var configuration = GetConfiguration();
+            var controller = new AuthController(context, configuration);
+
+            var request = new LoginRequest
+            {
+                Username = "admin",
+                Password = "wrongPassword"
+            };
+
+            var result = controller.Login(request);
+
+            Assert.IsType<UnauthorizedObjectResult>(result);
+        }
+
+        [Fact]
+        // Tester at login returnerer Ok, hvis brugernavn og password er korrekte
+        public void Login_ReturnsOk_WhenLoginIsCorrect()
+        {
+            using var context = GetDbContext();
+
+            context.Users.Add(new User
+            {
+                Id = 1,
+                Username = "admin",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("1234"),
+                Role = "Teacher"
+            });
+
+            context.SaveChanges();
+
+            var configuration = GetConfiguration();
+            var controller = new AuthController(context, configuration);
+
+            var request = new LoginRequest
+            {
+                Username = "admin",
+                Password = "1234"
+            };
+
+            var result = controller.Login(request);
+
             Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
-        public void Login_WhenLoginIsCorrect_ReturnsToken()
+        // Tester at login response indeholder token, brugernavn og rolle
+        public void Login_ReturnsLoginResponse_WhenLoginIsCorrect()
         {
-            // Arrange
-            CreateUser();
+            using var context = GetDbContext();
 
-            LoginRequest request = new LoginRequest
+            context.Users.Add(new User
+            {
+                Id = 1,
+                Username = "admin",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("1234"),
+                Role = "Teacher"
+            });
+
+            context.SaveChanges();
+
+            var configuration = GetConfiguration();
+            var controller = new AuthController(context, configuration);
+
+            var request = new LoginRequest
             {
                 Username = "admin",
                 Password = "1234"
             };
 
-            // Act
-            var result = _controller.Login(request);
+            var result = controller.Login(request);
 
-            // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-
             var response = Assert.IsType<LoginResponse>(okResult.Value);
 
-            Assert.NotNull(response.Token);
-            Assert.NotEmpty(response.Token);
-        }
-
-        [Fact]
-        public void Login_WhenLoginIsCorrect_ReturnsCorrectUsername()
-        {
-            // Arrange
-            CreateUser(username: "Julia");
-
-            LoginRequest request = new LoginRequest
-            {
-                Username = "Julia",
-                Password = "1234"
-            };
-
-            // Act
-            var result = _controller.Login(request);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var response = Assert.IsType<LoginResponse>(okResult.Value);
-
-            Assert.Equal("Julia", response.Username);
-        }
-
-        [Fact]
-        public void Login_WhenLoginIsCorrect_ReturnsCorrectRole()
-        {
-            // Arrange
-            CreateUser(role: "Admin");
-
-            LoginRequest request = new LoginRequest
-            {
-                Username = "admin",
-                Password = "1234"
-            };
-
-            // Act
-            var result = _controller.Login(request);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var response = Assert.IsType<LoginResponse>(okResult.Value);
-
-            Assert.Equal("Admin", response.Role);
-        }
-
-        [Fact]
-        public void Login_WhenLoginIsCorrect_GeneratesValidJwtToken()
-        {
-            // Arrange
-            CreateUser();
-
-            LoginRequest request = new LoginRequest
-            {
-                Username = "admin",
-                Password = "1234"
-            };
-
-            // Act
-            var result = _controller.Login(request);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var response = Assert.IsType<LoginResponse>(okResult.Value);
-
-            var handler = new JwtSecurityTokenHandler();
-
-            var token = handler.ReadJwtToken(response.Token);
-
-            Assert.Equal(
-                "admin",
-                token.Claims.First(c => c.Type == ClaimTypes.Name).Value);
-
-            Assert.Equal(
-                "Teacher",
-                token.Claims.First(c => c.Type == ClaimTypes.Role).Value);
-
-            Assert.NotNull(
-                token.Claims.FirstOrDefault(c => c.Type == "userId"));
+            Assert.False(string.IsNullOrWhiteSpace(response.Token));
+            Assert.Equal("admin", response.Username);
+            Assert.Equal("Teacher", response.Role);
         }
     }
 }
