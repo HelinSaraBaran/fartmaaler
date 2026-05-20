@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-// Halloooooo Heeeey WOOOOOHOOOOO
+// Halloooooo Heeeey WOOOOOHOOOOO'
+// ny lille kommentar test
 
 var builder = WebApplication.CreateBuilder(args);
 
