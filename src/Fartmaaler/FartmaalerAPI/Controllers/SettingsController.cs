@@ -82,5 +82,24 @@ namespace FartmaalerAPI.Controllers
                 );
             }
         }
+
+        [HttpPut("language")]
+        public IActionResult UpdateLanguage([FromBody] Settings updatedSetting)
+        {
+            try
+            {
+                var setting = _context.Settings.FirstOrDefault(s => s.Key.ToLower() == "ttslanguage");
+                if (setting == null)
+                    return NotFound(new { message = "Sprogsetting blev ikke fundet" });
+
+                setting.Value = updatedSetting.Value;
+                _context.SaveChanges();
+                return Ok(setting);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Der opstod en fejl", error = ex.Message });
+            }
+        }
     }
 }
