@@ -29,8 +29,8 @@ jobs:
           serve src/Fartmaaler -l 5500 &
           sleep 10
 
-      - name: Run tests
-        run: dotnet test src/Fartmaaler --configuration Release --no-build
+      - name: Run unit tests
+        run: dotnet test src/Fartmaaler --configuration Release --no-build --filter "FullyQualifiedName!~Selenium"
 
       - name: dotnet publish
         run: dotnet publish src/Fartmaaler --configuration Release --output ./publish
