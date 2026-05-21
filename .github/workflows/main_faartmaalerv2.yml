@@ -20,7 +20,10 @@ jobs:
 
       - name: Build with dotnet
         run: dotnet build src/Fartmaaler --configuration Release
-
+        
+      - name: Run tests
+        run: dotnet test src/Fartmaaler --configuration Release --no-build
+        
       - name: dotnet publish
         run: dotnet publish src/Fartmaaler --configuration Release --output ./publish
 
