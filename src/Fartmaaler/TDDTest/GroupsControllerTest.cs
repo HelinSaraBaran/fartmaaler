@@ -5,7 +5,6 @@ using FartmaalerAPI.Models;
 using FartmaalerAPI.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Moq;
 using Xunit;
 using Moq; 
 
