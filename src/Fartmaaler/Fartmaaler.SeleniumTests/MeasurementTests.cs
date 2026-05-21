@@ -28,6 +28,10 @@ public class MeasurementTests
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
 
+        var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+        wait.Until(d => d.PageSource.Contains("Start en ny session"));
+
         Assert.Contains("Start en ny session", driver.PageSource);
 
         driver.Quit();
@@ -40,9 +44,11 @@ public class MeasurementTests
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
 
-        Assert.NotNull(driver.FindElement(By.Id("groupSelect")));
-        Assert.NotNull(driver.FindElement(By.Id("carTypeSelect")));
-        Assert.NotNull(driver.FindElement(By.Id("roadTypeSelect")));
+        var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+        Assert.NotNull(wait.Until(d => d.FindElement(By.Id("groupSelect"))));
+        Assert.NotNull(wait.Until(d => d.FindElement(By.Id("carTypeSelect"))));
+        Assert.NotNull(wait.Until(d => d.FindElement(By.Id("roadTypeSelect"))));
 
         driver.Quit();
     }
@@ -54,11 +60,15 @@ public class MeasurementTests
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
 
-        IWebElement startButton = driver.FindElement(
-            By.XPath("//button[contains(text(),'Start session')]")
+        var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+        IWebElement startButton = wait.Until(d =>
+            d.FindElement(By.XPath("//button[contains(.,'Start session')]"))
         );
 
         startButton.Click();
+
+        wait.Until(d => d.PageSource.Contains("Udfyld alle felter"));
 
         Assert.Contains("Udfyld alle felter", driver.PageSource);
 

@@ -1,5 +1,7 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using OpenQA.Selenium.Support.UI;
 using Xunit;
 
 namespace Fartmaaler.SeleniumTests;
@@ -41,7 +43,7 @@ public class FrontpageTests
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
         IWebElement loginButton = driver.FindElement(
-            By.XPath("//button[contains(text(), 'Underviser login')]")
+            By.XPath("//button[contains(., 'Underviser login')]")
         );
 
         loginButton.Click();
@@ -58,8 +60,10 @@ public class FrontpageTests
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
-        IWebElement startButton = driver.FindElement(
-            By.XPath("//button[contains(text(), 'Start din måling')]")
+        WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+        IWebElement startButton = wait.Until(d =>
+            d.FindElement(By.XPath("//button[contains(., 'Start din måling')]"))
         );
 
         startButton.Click();
