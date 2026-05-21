@@ -23,11 +23,11 @@ jobs:
       - name: Build with dotnet
         run: dotnet build src/Fartmaaler --configuration Release
 
-      - name: Install static file server
-        run: npm install -g serve
-
       - name: Start frontend locally
-        run: serve src/Fartmaaler -l 5500 &
+        run: |
+          npm install -g serve
+          serve src/Fartmaaler -l 5500 &
+          sleep 10
 
       - name: Run tests
         run: dotnet test src/Fartmaaler --configuration Release --no-build
