@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FartmaalerAPI", "Fartmaaler
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TDDTest", "TDDTest\TDDTest.csproj", "{FABCD3E0-8572-4904-83D2-DDBDB2AC2874}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fartmaaler.SeleniumTests", "Fartmaaler.SeleniumTests\Fartmaaler.SeleniumTests.csproj", "{FE6EF49D-30B8-409D-8F22-12B4C615F851}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{FABCD3E0-8572-4904-83D2-DDBDB2AC2874}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FABCD3E0-8572-4904-83D2-DDBDB2AC2874}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FABCD3E0-8572-4904-83D2-DDBDB2AC2874}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE6EF49D-30B8-409D-8F22-12B4C615F851}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE6EF49D-30B8-409D-8F22-12B4C615F851}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE6EF49D-30B8-409D-8F22-12B4C615F851}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE6EF49D-30B8-409D-8F22-12B4C615F851}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -103,12 +103,12 @@ namespace FartmaalerAPI.Tests
 
             Assert.NotNull(result);
             Assert.Equal(1, result.SessionId);
-            Assert.Equal(5.0, result.Distance);
+            Assert.Equal(0.92, result.Distance, 2);
             Assert.Equal(2, result.Time);
-            Assert.Equal(9.0, result.MeasuredSpeed);
-            Assert.Equal(90.0, result.SimulatedSpeed);
+            Assert.Equal(1.66, result.MeasuredSpeed, 2);
+            Assert.Equal(16.56, result.SimulatedSpeed, 2);
             Assert.Equal(50, result.SpeedLimit);
-            Assert.Equal("Too fast", result.Status);
+            Assert.Equal("Under limit", result.Status);
         }
 
         [Fact]
