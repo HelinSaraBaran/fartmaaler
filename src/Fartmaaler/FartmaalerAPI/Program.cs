@@ -148,14 +148,6 @@ using (IServiceScope scope = app.Services.CreateScope())
         context.SchoolLeaderboardMocks.AddRange(
             new SchoolLeaderboardMock
             {
-                SchoolName = "Roskilde Skole",
-                RoadType = "byzone 50",
-                AverageScore = 8.4,
-                AverageCo2 = 5.2,
-                MeasurementCount = 42
-            },
-            new SchoolLeaderboardMock
-            {
                 SchoolName = "Holbæk Skole",
                 RoadType = "byzone 50",
                 AverageScore = 10.1,
@@ -164,11 +156,11 @@ using (IServiceScope scope = app.Services.CreateScope())
             },
             new SchoolLeaderboardMock
             {
-                SchoolName = "Roskilde Skole",
-                RoadType = "landevej 80",
-                AverageScore = 12.5,
-                AverageCo2 = 8.8,
-                MeasurementCount = 35
+                SchoolName = "Næstved Skole",
+                RoadType = "byzone 50",
+                AverageScore = 12.3,
+                AverageCo2 = 7.1,
+                MeasurementCount = 30
             },
             new SchoolLeaderboardMock
             {
@@ -180,11 +172,11 @@ using (IServiceScope scope = app.Services.CreateScope())
             },
             new SchoolLeaderboardMock
             {
-                SchoolName = "Roskilde Skole",
-                RoadType = "motorvej 110",
-                AverageScore = 18.3,
-                AverageCo2 = 14.1,
-                MeasurementCount = 29
+                SchoolName = "Næstved Skole",
+                RoadType = "landevej 80",
+                AverageScore = 16.0,
+                AverageCo2 = 10.2,
+                MeasurementCount = 27
             },
             new SchoolLeaderboardMock
             {
@@ -193,9 +185,16 @@ using (IServiceScope scope = app.Services.CreateScope())
                 AverageScore = 20.6,
                 AverageCo2 = 15.7,
                 MeasurementCount = 25
+            },
+            new SchoolLeaderboardMock
+            {
+                SchoolName = "Næstved Skole",
+                RoadType = "motorvej 110",
+                AverageScore = 22.4,
+                AverageCo2 = 16.9,
+                MeasurementCount = 22
             }
         );
-
         context.SaveChanges();
     }
 
