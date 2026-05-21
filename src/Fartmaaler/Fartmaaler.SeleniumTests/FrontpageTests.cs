@@ -41,7 +41,7 @@ public class FrontpageTests
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
         IWebElement loginButton = driver.FindElement(
-            By.XPath("//button[contains(text(), 'Underviser login')]")
+            By.XPath("//*[contains(text(), 'Underviser login')]")
         );
 
         loginButton.Click();
@@ -59,7 +59,7 @@ public class FrontpageTests
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
         IWebElement startButton = driver.FindElement(
-            By.XPath("//button[contains(text(), 'Start din måling')]")
+            By.XPath("//*[contains(text(), 'Start din måling')]")
         );
 
         startButton.Click();
