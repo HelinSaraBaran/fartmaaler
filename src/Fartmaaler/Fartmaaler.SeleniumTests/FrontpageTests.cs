@@ -6,10 +6,25 @@ namespace Fartmaaler.SeleniumTests;
 
 public class FrontpageTests
 {
+    private IWebDriver CreateDriver()
+    {
+        ChromeOptions options = new ChromeOptions();
+
+        options.AddArgument("--headless=new");
+        options.AddArgument("--no-sandbox");
+        options.AddArgument("--disable-dev-shm-usage");
+        options.AddArgument("--disable-gpu");
+        options.AddArgument("--window-size=1920,1080");
+
+        IWebDriver driver = new ChromeDriver(options);
+
+        return driver;
+    }
+
     [Fact]
     public void Frontpage_Loads()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
@@ -21,11 +36,11 @@ public class FrontpageTests
     [Fact]
     public void Teacher_Login_Button_Can_Click()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
-        var loginButton = driver.FindElement(
+        IWebElement loginButton = driver.FindElement(
             By.XPath("//button[contains(text(), 'Underviser login')]")
         );
 
@@ -39,11 +54,11 @@ public class FrontpageTests
     [Fact]
     public void Start_Measurement_Button_Can_Click()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
 
-        var startButton = driver.FindElement(
+        IWebElement startButton = driver.FindElement(
             By.XPath("//button[contains(text(), 'Start din måling')]")
         );
 
