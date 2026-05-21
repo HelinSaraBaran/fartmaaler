@@ -53,12 +53,13 @@ namespace FartmaalerAPI.Services
             measuredSpeedKmh * session.ScalingFactor;
             string status;
 
-            if (simulatedSpeedKmh > session.SpeedLimit)
+            double tolerance = 3;
+            if (simulatedSpeedKmh > session.SpeedLimit + tolerance)
                 status = "Too fast";
-            else if (simulatedSpeedKmh < session.SpeedLimit)
-                status = "Under limit";
-            else
-                status = "On limit";
+            else if (simulatedSpeedKmh < session.SpeedLimit - tolerance)
+                status = "Too slow";
+            else status = "On limit";
+
 
             double co2Factor = GetCo2Factor(session.CarType);
 
