@@ -6,10 +6,25 @@ namespace Fartmaaler.SeleniumTests;
 
 public class LoginTests
 {
+    private IWebDriver CreateDriver()
+    {
+        ChromeOptions options = new ChromeOptions();
+
+        options.AddArgument("--headless=new");
+        options.AddArgument("--no-sandbox");
+        options.AddArgument("--disable-dev-shm-usage");
+        options.AddArgument("--disable-gpu");
+        options.AddArgument("--window-size=1920,1080");
+
+        IWebDriver driver = new ChromeDriver(options);
+
+        return driver;
+    }
+
     [Fact]
     public void Teacher_Can_Open_Login_Page()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
 
@@ -21,14 +36,14 @@ public class LoginTests
     [Fact]
     public void Login_Fields_Exist()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
 
-        var usernameInput =
+        IWebElement usernameInput =
             driver.FindElement(By.Id("usernameInput"));
 
-        var passwordInput =
+        IWebElement passwordInput =
             driver.FindElement(By.Id("passwordInput"));
 
         Assert.NotNull(usernameInput);
@@ -40,14 +55,14 @@ public class LoginTests
     [Fact]
     public void Teacher_Can_Type_In_Login_Fields()
     {
-        IWebDriver driver = new ChromeDriver();
+        IWebDriver driver = CreateDriver();
 
         driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
 
-        var usernameInput =
+        IWebElement usernameInput =
             driver.FindElement(By.Id("usernameInput"));
 
-        var passwordInput =
+        IWebElement passwordInput =
             driver.FindElement(By.Id("passwordInput"));
 
         usernameInput.SendKeys("test");
