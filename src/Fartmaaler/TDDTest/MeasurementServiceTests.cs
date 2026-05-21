@@ -108,11 +108,13 @@ namespace FartmaalerAPI.Tests
             Assert.Equal(1.66, result.MeasuredSpeed, 2);
             Assert.Equal(16.56, result.SimulatedSpeed, 2);
             Assert.Equal(50, result.SpeedLimit);
-            Assert.Equal("Under limit", result.Status);
+            Assert.Equal("Too slow", result.Status);
+            Assert.Equal(1.99, result.Co2, 2);
+            Assert.Equal(4.01, result.Co2Saved, 2);
         }
 
         [Fact]
-        public void CreateMeasurement_SetsStatusUnderLimit_WhenSpeedIsBelowLimit()
+        public void CreateMeasurement_SetsStatusTooSlow_WhenSpeedIsBelowLimit()
         {
             using var context = GetDbContext();
 
@@ -134,7 +136,7 @@ namespace FartmaalerAPI.Tests
             var result = service.CreateMeasurement(1, 2);
 
             Assert.NotNull(result);
-            Assert.Equal("Under limit", result.Status);
+            Assert.Equal("Too slow", result.Status);
         }
 
         [Fact]
