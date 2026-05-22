@@ -26,7 +26,7 @@ public class LoginTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/teacher-login.html");
 
         Assert.Contains("Underviser login", driver.PageSource);
 
@@ -38,7 +38,7 @@ public class LoginTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/teacher-login.html");
 
         IWebElement usernameInput =
             driver.FindElement(By.Id("usernameInput"));
@@ -57,7 +57,7 @@ public class LoginTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/teacher-login.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/teacher-login.html");
 
         IWebElement usernameInput =
             driver.FindElement(By.Id("usernameInput"));
