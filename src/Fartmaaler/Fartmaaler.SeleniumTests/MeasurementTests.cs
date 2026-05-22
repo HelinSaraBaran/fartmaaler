@@ -26,7 +26,7 @@ public class MeasurementTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/elev.html");
 
         var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
@@ -42,7 +42,7 @@ public class MeasurementTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/elev.html");
 
         var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
@@ -58,7 +58,7 @@ public class MeasurementTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/elev.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/elev.html");
 
         var wait = new OpenQA.Selenium.Support.UI.WebDriverWait(driver, TimeSpan.FromSeconds(10));
 

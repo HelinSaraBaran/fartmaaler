@@ -27,7 +27,7 @@ public class FrontpageTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/index.html");
 
         Assert.Contains("Smart Fartmåler", driver.PageSource);
 
@@ -39,7 +39,7 @@ public class FrontpageTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/index.html");
 
         IWebElement loginButton = driver.FindElement(
             By.XPath("//button[contains(., 'Underviser login')]")
@@ -57,7 +57,7 @@ public class FrontpageTests
     {
         IWebDriver driver = CreateDriver();
 
-        driver.Navigate().GoToUrl("http://127.0.0.1:5500/index.html");
+        driver.Navigate().GoToUrl("https://faartmaalerv2front-haf2cxf9hed7grb7.polandcentral-01.azurewebsites.net/index.html");
 
         WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
